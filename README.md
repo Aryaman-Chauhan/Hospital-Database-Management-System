@@ -4,16 +4,20 @@ The system is designed to manage the day-to-day operations and processes of a ho
 
 The system provides an interface that allows to manage and view the data efficiently. One can access and update patient information, schedule appointments, and generate bills(using functions/procedures and triggers). The system provides a view features that allows staff to quickly find patient data, medical histories, and diagnosis information.
 
+## ER Diagram: 
+
+![Library Management System](\Images\ERDiagram.png)
+
 ## Tables Featured:
 
-Staff(**s_id**, s_name, salary, *retirement_date, date_joining)
-- Doctor(**s_id**, department, )
-- Nurse(**s_id**, seniority, department)
-- Non-Medical Staff(**s_id**, Duty type)
+Staff(**s_id**, s_name, salary, retirement, joining, Ph.No., Address)
+- Department(**dep_id**, Dep_name)
+- Doctor(**s_id**, dep_id)
+- Nurse(**s_id**, seniority, dep_id)
+- Non-Medical Staff(**s_id**, duty_type)
 
 Patient(**p_id**,p_name, gender, address, phone no.,)
-- Patient History(**p_id**, **a_id**) 
-- Room(**r_no**, r_type, r_fee_per_day, *Nurse1(s_id)*, *Nurse2(s_id)*) //Here, s_id indicates nurse alloted to that patient
+- Room(**r_no**, r_type, r_fee_per_day, Nurse1(s_id), *Nurse2(s_id)*) //Here, s_id indicates nurse alloted to that patient
 - Billing(**b_no**, **p_id**, date, Diagnosis cost, a_id, Medicine Cost, Procedure cost, Total cost)
 
 Appointment(**a_id**, p_id, s_id, date)
