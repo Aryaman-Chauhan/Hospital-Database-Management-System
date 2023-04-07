@@ -6,7 +6,7 @@ The system provides an interface that allows to manage and view the data efficie
 
 ## ER Diagram: 
 
-![Library Management System](\Images\ERDiagram.png)
+![Library Management System](https://github.com/Aryaman-Chauhan/Hospital-Database-Management-System/blob/main/Images/ERDiagram.png)
 
 ## Tables Featured:
 
