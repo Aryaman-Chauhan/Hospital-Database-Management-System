@@ -69,7 +69,7 @@ class tkinterApp(tk.Tk):
         container.grid_columnconfigure(0, weight = 1)
         # initializing frames to an empty dictionary
         self.frames = {} 
-        for F in (StaffLogin, PatientLogin, PatientRegistration, AdminPage, PatientPage, DoctorPage, NursePage):
+        for F in (StaffLogin, PatientLogin, PatientRegistration, AdminPage, PatientPage, DoctorPage, NursePage, NMSPage):
 
             frame = F(container, self)
 
@@ -90,6 +90,8 @@ class StaffLogin(tk.Frame):
     ids = ""
     passw = ""
     def __init__(self, parent, controller):
+        self.db = MySQLDatabase("localhost", "root", "00000000", "Hospital")
+        self.db.connection.autocommit = True
         tk.Frame.__init__(self, parent)
         def getdat():
             StaffLogin.ids = idtt.get()
@@ -99,8 +101,21 @@ class StaffLogin(tk.Frame):
             if StaffLogin.ids == "" or StaffLogin.passw == "":
                 MessageBox.showwarning("Login Status", "All Field are Required!!!")
             else:
-                if StaffLogin.ids == "DOC0000" and StaffLogin.passw == "0000":
-                    controller.show_frame(AdminPage)
+                if len(StaffLogin.ids) <=8:
+                    passchk = self.db.execute_query(f"Select `password` from staff where s_id='{StaffLogin.ids}'")[0][0]
+                    if passchk != StaffLogin.passw:
+                        MessageBox.showerror("Login Error", "Wrong Password or Non-Existent user")
+                        controller.show_frame(StaffLogin)
+                        return
+                    if StaffLogin.ids[0:3] == "DOC":
+                        if StaffLogin.ids == "DOC0000":
+                            controller.show_frame(AdminPage)
+                        else:
+                            controller.show_frame(DoctorPage)
+                    elif StaffLogin.ids[0:3] == "NUR":
+                        controller.show_frame(NursePage)
+                    else:
+                        controller.show_frame(NMSPage)
 
         titletext = tk.Label(master=self, text="Staff Login", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
@@ -270,6 +285,8 @@ class AdminPage(tk.Frame):
         self.db.connection.autocommit = True
         def changePass():
             newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='DOC0000'")
         
@@ -330,15 +347,19 @@ class AdminPage(tk.Frame):
                 if not phnum.isdigit() or len(phnum)!=10:
                     MessageBox.showerror("Registration Status", "Enter Valid Phone No.")
                     phtt.delete(0,tk.END)
+                    return
                 elif not salary.isdecimal():
                     MessageBox.showerror("Registration Status", "Enter Valid Salary Amount")
                     saltt.delete(0,tk.END)
+                    return
                 elif pwd2!=pwd1:
                     MessageBox.showerror("Registration Status", "Passwords don't match")
                     passwordtt.delete(0, tk.END)
                     passrett.delete(0, tk.END)
+                    return
                 elif gndr == "None":
                     MessageBox.showerror("Registration Status", "Please Select Your Gender")
+                    return
                 elif gndr == "Others":
                     gndr = askstring("Gender", "What is your gender?")
                     MessageBox.showinfo("Staff Gender", "Gender {} registered succesfully".format(gndr))
@@ -354,17 +375,27 @@ class AdminPage(tk.Frame):
                     s_id = self.db.execute_query(f"select convert(substring(s_id,4,4),unsigned) + 1 from doctor order by s_id desc limit 1")[0][0]
 
                     result = self.db.execute_query(f"INSERT INTO Doctor(s_id, dep_id) values (concat('DOC',LPAD({s_id},4,0)),{spec})")
-                    result = self.db.execute_query(f"Insert into staff(s_id,s_name,salary,joining,`Ph.No.`,Address, `password`, gender) select s_id,{name}, {salary}, current_date, {phnum}, {adr}, {pwd1}, {gndr} from doctor order by s_id desc limit 1")
+                    result = self.db.execute_query(f"Insert into staff(s_id,s_name,salary,joining,`Ph.No.`,Address, `password`, gender) select s_id,'{name}', {salary}, current_date, '{phnum}', '{adr}', '{pwd1}', '{gndr}' from doctor order by s_id desc limit 1")
                 elif stftyp == "Nurse":
                     s_id = self.db.execute_query(f"select convert(substring(s_id,4,4),unsigned) + 1 from nurse order by s_id desc limit 1")[0][0]
 
-                    result = self.db.execute_query(f"INSERT INTO Nurse(s_id, dep_id, seniority) values (concat('NUR',LPAD({s_id},4,0)),{spec}, {senior})")
-                    result = self.db.execute_query(f"Insert into staff(s_id,s_name,salary,joining,`Ph.No.`,Address, `password`, gender) select s_id,{name}, {salary}, current_date, {phnum}, {adr}, {pwd1}, {gndr} from nurse order by s_id desc limit 1")
+                    result = self.db.execute_query(f"INSERT INTO Nurse(s_id, dep_id, seniority) values (concat('NUR',LPAD({s_id},4,0)),{spec}, '{senior}')")
+                    result = self.db.execute_query(f"Insert into staff(s_id,s_name,salary,joining,`Ph.No.`,Address, `password`, gender) select s_id,'{name}', {salary}, current_date, '{phnum}', '{adr}', '{pwd1}', '{gndr}' from nurse order by s_id desc limit 1")
                 else:
                     s_id = self.db.execute_query(f"select convert(substring(s_id,4,4),unsigned) + 1 from `non-medical staff` order by s_id desc limit 1")[0][0]
 
-                    result = self.db.execute_query(f"INSERT INTO `Non-Medical Staff`(s_id, duty_type) values (concat('NMS',LPAD({s_id},4,0)),{dutype})")
-                    result = self.db.execute_query(f"Insert into staff(s_id,s_name,salary,joining,`Ph.No.`,Address, `password`, gender) select s_id,{name}, {salary}, current_date, {phnum}, {adr}, {pwd1}, {gndr} from `Non-Medical Staff` order by s_id desc limit 1")
+                    result = self.db.execute_query(f"INSERT INTO `Non-Medical Staff`(s_id, duty_type) values (concat('NMS',LPAD({s_id},4,0)),'{dutype}')")
+                    result = self.db.execute_query(f"Insert into staff(s_id,s_name,salary,joining,`Ph.No.`,Address, `password`, gender) select s_id,'{name}', '{salary}', current_date, '{phnum}', '{adr}', '{pwd1}', '{gndr}' from `Non-Medical Staff` order by s_id desc limit 1")
+                nmtt.delete(0,tk.END)
+                phtt.delete(0,tk.END)
+                adtt.delete("1.0",tk.END)
+                saltt.delete(0,tk.END)
+                passrett.delete(0,tk.END)
+                passwordtt.delete(0,tk.END)
+                speclist.select_set(0)
+                typelist.select_set(0)
+                gntt.select_set(0)
+
         titletext = tk.Label(master=self, text="Welcome Admin", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
         logframe.columnconfigure(0, weight=1)
@@ -499,12 +530,26 @@ class PatientPage(tk.Frame):
 class DoctorPage(tk.Frame):
     txt = ""
     def __init__(self, parent, controller):
+        self.db = MySQLDatabase("localhost", "root", "00000000", "Hospital")
+        self.db.connection.autocommit = True
         tk.Frame.__init__(self, parent)
         def changePass():
-            pass
+            s_id = StaffLogin.ids
+            newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                return
+            MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
+            self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
 
         def upcomingAppoint():
-            pass
+            Table.lst = self.db.execute_query(f"select a_id,p_id,patient.p_name,date from appointment join patient using(p_id) where s_id = '{StaffLogin.ids}' and status ='diagnosis'")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Date of Appointment'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
 
         def ongoingProcedure():
             pass
@@ -550,7 +595,7 @@ class NursePage(tk.Frame):
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
 
-class Page(tk.Frame):
+class NMSPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
 
