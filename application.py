@@ -764,14 +764,54 @@ class NursePage(tk.Frame):
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
 
+        def roomallot():
+            Table.lst = self.db.execute_query(f"select r_no,r_type from room where nurse_1 = '{StaffLogin.ids}' or nurse_2='{StaffLogin.ids}'")
+            Table.lst.insert(0,('Room No.', 'Room Type'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("600x600")
+            showApp.mainloop()
+
+        def patientAllot():
+            Table.lst = self.db.execute_query(f"select a.a_id,r.r_no,r.r_type,p.p_id,p.p_name,p.gender from patient as p join appointment as a using(p_id) join `procedure` using(a_id) join room as r using(r_no) where r.nurse_1='{StaffLogin.ids}' or r.nurse_2='{StaffLogin.ids}'")
+            Table.lst.insert(0,('Appointment ID','Room No.','Room Type','Patient ID','Patient Name','Patient Gender'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
+        def detailsPatient():
+            apid = askstring("Appointment ID", "Enter Appointment ID to fetch relevant details")
+            if apid=="":
+                MessageBox.showerror("Operation Failed", "No ID entered")
+                return
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id, ss.s_name,d.b_no,d.diagnosis,d.medicine,a.date,p.date,p.r_no,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) join staff as ss using(s_id) where a_id = {apid}")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Doctor Name','Bill No.','Diagnosis', 'Medicine', 'Appointment Date', 'Patient Admit Date','Patient Room No.', 'Procedure Details'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
         titletext = tk.Label(master=self, text="Welcome Nurse", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
 
         button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=20, row=0, column=0)
-        button10 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
-        button9 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
+        button2 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
+        button3 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
+
+        button4 = tk.Button(master=logframe, text="Check Alloted Room", command=roomallot).grid(padx=10, pady=10, row=1, column=0)
+        button5 = tk.Button(master=logframe, text="Check Alloted Patient", command=patientAllot).grid(padx=10, pady=10, row =1, column=1)
+        button6 = tk.Button(master=logframe, text="See Patient Details", command=detailsPatient).grid(padx=10, pady=10, row=1, column=2)
+
+        button7 = tk.Button(master=logframe, text="Logout",command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=10, row=2, column=1)
 
         logframe.pack(padx=10,pady=10)
 
