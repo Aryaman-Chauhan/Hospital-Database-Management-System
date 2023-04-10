@@ -319,6 +319,7 @@ class AdminPage(tk.Frame):
         self.db.connection.autocommit = True
 
         def getDate():
+            stafframe.pack_forget()
             retdat.pack(padx=10, pady=10)
 
         def retSet():
@@ -343,7 +344,8 @@ class AdminPage(tk.Frame):
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='DOC0000'")
         
         def addStaff():
-            stafframe.pack(padx=10,pady=10)
+            retdat.pack_forget()
+            stafframe.pack(padx=10,pady=0)
 
         def showStaff():
             Table.lst = self.db.execute_query(f"select s_id, s_name, joining, `Ph.No.`, Address, Gender, Salary from staff order by s_id")
@@ -387,6 +389,27 @@ class AdminPage(tk.Frame):
                 return
             MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
             self.db.execute_query(f"update staff set `Ph.No.` = '{newPh}' where s_id='{StaffLogin.ids}'")
+
+        def addRoom():
+            dept = askstring("Room Addition", "Write Room type between VIP,General,Children,Public")
+            fee = askstring("Fee per day","Enter Room Fee per day")
+            if dept=="" or dept not in ("VIP", "General", "Children", "Public"):
+                MessageBox.showerror("Operation Fail", "Invalid name given")
+                return
+            elif not fee.isdigit():
+                MessageBox.showerror("Operation Fail", "Invalid Fee value given")
+                return
+            self.db.execute_query(f"insert into room(r_type, room_fee_per_day) values('{dept}',{fee})")
+            if self.db.cursor.rowcount != 1:
+                MessageBox.showerror("Operation fail", f"Room {dept} could not be added")
+
+        def addDep():
+            dept = askstring("Department Addition", "Write Department name to be added")
+            if dept=="":
+                MessageBox.showerror("Operation Fail", "No Department name given")
+            self.db.execute_query(f"insert into departments(dep_name) values('{dept}')")
+            if self.db.cursor.rowcount != 1:
+                MessageBox.showerror("Operation fail", f"Department {dept} could not be added")
 
         def getdat():
             name = nmtt.get()
@@ -456,7 +479,7 @@ class AdminPage(tk.Frame):
                 typelist.select_set(0)
                 gntt.select_set(0)
 
-        titletext = tk.Label(master=self, text="Welcome Admin", font=("Arial bold", 18)).pack(pady=20)
+        titletext = tk.Label(master=self, text="Welcome Admin", font=("Arial bold", 18)).pack(pady=10)
         logframe = tk.Frame(master=self)
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
@@ -473,9 +496,13 @@ class AdminPage(tk.Frame):
 
         button5 = tk.Button(master=logframe, text="Change Salary", command=changeSalary).grid(padx=10, pady=10, row=1, column=1)
 
-        button6 = tk.Button(master=logframe,text="Logout", command = lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=20, row=3, column=1)
+        button6 = tk.Button(master=logframe,text="Logout", command = lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=0, row=3, column=1)
 
         button8 = tk.Button(master=logframe, text="Retire Staff", command=getDate).grid(padx=10, pady=10, row=1,column=2)
+
+        button11 = tk.Button(master=logframe, text="Add Room", command=addRoom).grid(padx=10, pady=10, row=2, column=1)
+
+        button12 = tk.Button(master=logframe, text="Add Department", command=addDep).grid(padx=10, pady=10, row=2, column=2)
 
         logframe.pack(padx=20, pady=20)
 
@@ -532,9 +559,9 @@ class AdminPage(tk.Frame):
 
         sallab = tk.Label(master=stafframe, text="Salary").grid(padx=10, row = 4, column=0)
         saltt = tk.Entry(master=stafframe)
-        saltt.grid(padx=10, row=4, column=1)
+        saltt.grid(padx=10,pady=10, row=4, column=1)
 
-        button7 = tk.Button(master=stafframe, text="Add Staff", command=getdat).grid(pady=10, row=5, column=2, sticky=tk.E+tk.W)
+        button7 = tk.Button(master=stafframe, text="Add Staff", command=getdat).grid(pady=10, row=4, column=2)
 
         retdat= tk.Frame(master=self)
 
@@ -665,8 +692,8 @@ class DoctorPage(tk.Frame):
             showApp.mainloop()
 
         def ongoingProcedure():
-            Table.lst = self.db.execute_query(f"select a_id,p_id,patient.p_name,date from appointment join patient using(p_id) where s_id = '{StaffLogin.ids}' and (status <>'procedure' or status<>'diagnosis')")
-            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Date of Appointment'))
+            Table.lst = self.db.execute_query(f"select a_id,p_id,patient.p_name,date,status from appointment join patient using(p_id) where s_id = '{StaffLogin.ids}' and (status ='procedure' or status='diagnosis')")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Date of Appointment','Status of Patient'))
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
             showApp = tk.Tk()
@@ -701,13 +728,52 @@ class DoctorPage(tk.Frame):
             t = Table(showApp)
             showApp.geometry("1000x600")
             showApp.mainloop()
-            pass
 
-        def changeAppoint():
-            pass
+        def setDiagnosis():
+            procframe.pack_forget()
+            diagframe.pack(padx=10,pady=10)
+
+        def changeDiagnosis():
+            aid = aidtt.get()
+            diag = diatt.get("1.0",tk.END)
+            med = meditt.get("1,0",tk.END)
+            if aid=="":
+                MessageBox.showerror("Update Fail", "Enter valid appointment id")
+                return
+            self.db.execute_query(f"update diagnosis join appointment using(a_id) set diagnosis = concat(diagnosis'\n',current_time, '{diag}'), medicine = concat(medicine'\n',current_time,'{med}') where a_id = {aid} and status='diagnosis'")
+            aidtt.delete(0,tk.END)
+            diatt.delete("1.0", tk.END)
+            meditt.delete("1.0", tk.END)
+            diagframe.pack_forget()
+            if self.db.cursor.rowcount!=1:
+                MessageBox.showerror("Update failed", "Enter appropriate appointment ID")
+
+        def updateProc():
+            diagframe.pack_forget()
+            procframe.pack(padx=10,pady=10)
+
+        def setProc():
+            aid = aidtt1.get()
+            if aid=="":
+                MessageBox.showerror("Update Fail", "Enter valid appointment id")
+                return
+            det = dett.get("1.0", tk.END)
+            self.db.execute_query(f"update procedure join appointment using(a_id) set details = concat(details,'\n',current_time, '{det}') where a_id = {aid} and status='procedure'")
+            aidtt1.delete(0,tk.END)
+            dett.delete("1.0", tk.END)
+            procframe.pack_forget()
+            if self.db.cursor.rowcount!=1:
+                MessageBox.showerror("Update failed", "Enter appropriate appointment ID")
 
         def patientHistory():
-            pass
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,p.p_name,a.date from appointment as a join patient as p using(p_id) where s_id = '{StaffLogin.ids}'")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Appointment Date'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
 
         DoctorPage.txt = f"Welcome Doctor {StaffLogin.ids}"
         titletext = tk.Label(master=self, text=DoctorPage.txt, font=("Arial bold", 18)).pack(pady=20)
@@ -715,21 +781,51 @@ class DoctorPage(tk.Frame):
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
 
-        button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=20, row=0, column=0)
-        button10 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
-        button9 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
+        button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=10, row=0, column=0)
+        button10 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=10, row=0, column=1)
+        button9 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=10, row = 0, column=2)
 
-        button2 = tk.Button(master=logframe, text="Upcoming Appointment", command=upcomingAppoint).grid(padx=10, pady=20, row=1, column=0)
-        button4 = tk.Button(master=logframe, text="Search Patients By Name", command=patientsByName).grid(padx=10, pady=20, row=1, column=1)
-        button5 = tk.Button(master=logframe, text="Search Patients By ID", command=patientByID).grid(padx=10, pady=20, row=1, column=2)
+        button2 = tk.Button(master=logframe, text="Upcoming Appointment", command=upcomingAppoint).grid(padx=10, pady=10, row=1, column=0)
+        button4 = tk.Button(master=logframe, text="Search Patients By Name", command=patientsByName).grid(padx=10, pady=10, row=1, column=1)
+        button5 = tk.Button(master=logframe, text="Search Patients By ID", command=patientByID).grid(padx=10, pady=10, row=1, column=2)
 
-        button7 = tk.Button(master=logframe, text="Patient History", command=patientHistory).grid(padx=10, pady=20, row=2, column=0)
-        button8 = tk.Button(master=logframe, text="Change Appointment Date", command=changeAppoint).grid(padx=10, pady=20, row=2, column=1)
-        button3 = tk.Button(master=logframe, text="Ongoing Procedure", command=ongoingProcedure).grid(padx=10, pady=20, row=2, column=2)
+        button3 = tk.Button(master=logframe, text="Ongoing Procedure", command=ongoingProcedure).grid(padx=10, pady=10, row=2, column=0)
+        button8 = tk.Button(master=logframe, text="Update Diagnosis", command=setDiagnosis).grid(padx=10, pady=10, row=2, column=1)
+        button12 = tk.Button(master=logframe, text="Update Procedure", command=updateProc).grid(padx=10,pady=10,row=2,column=2)
 
-        button6 = tk.Button(master=logframe, text="Logout", command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=20, row=4, column=1)
+        button7 = tk.Button(master=logframe, text="Patient History", command=patientHistory).grid(padx=10, pady=10, row=3, column=0)
+        button6 = tk.Button(master=logframe, text="Logout", command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=10, row=3, column=1)
 
         logframe.pack(padx=10, pady=20)
+
+        diagframe = tk.Frame(self)
+
+        lab1 = tk.Label(master=diagframe, text="Enter diagnosis").grid(padx=10,pady=10,row=0,column=0)
+        lab2 = tk.Label(master=diagframe, text="Enter Medicine").grid(padx=10,pady=10,row=0,column=1)
+
+        diatt = tk.Text(master=diagframe, height=8, width=10)
+        diatt.grid(padx=10,pady=10,row=1,column=0)
+
+        meditt = tk.Text(master=diagframe, height=8, width=10)
+        meditt.grid(padx=10,pady=10,row=1,column=1)
+
+        lab3 = tk.Label(master=diagframe, text="Enter Appointment ID").grid(padx=10,pady=10,row=2,column=0)
+        aidtt = tk.Entry(master=diagframe)
+        aidtt.grid(padx=10,pady=10, row=2,column=1)
+
+        button11 = tk.Button(master=diagframe, text='Update Diagnosis', command=changeDiagnosis).grid(padx=10,pady=10,row=3,column=1)
+
+        procframe = tk.Frame(self)
+
+        lab4 = tk.Label(master=procframe, text="Enter Procedure details").grid(padx=10,pady=10,row=0,column=0)
+        dett = tk.Text(master=procframe, height=8, width=10)
+        dett.grid(padx=10,pady=10,row=0,column=1)
+
+        lab5 = tk.Label(master=procframe, text="Enter Appointment ID").grid(padx=10,pady=10,row=1,column=0)
+        aidtt1 = tk.Entry(master=procframe)
+        aidtt1.grid(padx=10,pady=10, row=1,column=1)
+
+        button13 = tk.Button(master=procframe, text="Update Details",command=setProc).grid(padx=10,pady=10,row=2,column=1)
 
 class NursePage(tk.Frame):
     def __init__(self, parent, controller):
@@ -848,6 +944,44 @@ class NMSPage(tk.Frame):
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
 
+        def unassignPat():
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.date,d.b_no,d.diagnosis,d.medicine,p.date,p.r_no,p.date_discharge,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no=null")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Appointment Date','Bill No.','Diagnosis', 'Medicine', 'Procedure Date','Room No.','Procedure Date Discharge','Procedure details'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1600x600")
+            showApp.mainloop()
+
+        def patAssign():
+            roomframe.pack(padx=10,pady=10)
+
+        def comAssign():
+            aid = aidtt.get()
+            room = roomlist.get(roomlist.curselection())
+            room = str(room).split()[0]
+            nur1 = nurlist.get(nurlist.curselection())
+            nur2 = nurlist1.get(nurlist1.curselection())
+            lst1=self.db.execute_query(f"select a.a_id from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no=null")
+            lst1 = list(lst1)
+            if aid == "" or aid not in lst1:
+                MessageBox.showerror("Operation Pause", "Enter Appropriate Appointment ID")
+                return
+            elif not room.isdigit():
+                MessageBox.showerror("Operation Pause", "Select a Room if available")
+                return
+            elif nur1 == nur2:
+                MessageBox.showerror("Operation Pause", "Please select nurse appropriately")
+                return
+            self.db.execute_query(f"update `procedure` set r_no={room} where a_id = {aid}")
+            if self.db.cursor.rowcount !=1:
+                MessageBox.showerror("Operation Cancelled", "Wrong Appointment ID")
+                aidtt.delete(0,tk.END)
+                return
+            self.db.execute_query(f"update room nurse_1=if('{nur1}'='None',null,'{nur1}'),nurse_2=if('{nur2}'='None',null,'{nur2}'), status='Occupied' where r_no={room}")
+            roomframe.grid_forget()
+
         titletext = tk.Label(master=self, text="Welcome ", font=("Arial bold", 18))
         titletext.pack(pady=20)
         titletext.config(text = f'Welcome')
@@ -859,7 +993,47 @@ class NMSPage(tk.Frame):
         button2 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
         button3 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
 
+        button4 = tk.Button(master=logframe, text="Show Unassigned patients", command=unassignPat).grid(padx=10,pady=10, row=1, column=0)
+        button5 = tk.Button(master=logframe, text="Assign Free Room", command=patAssign).grid(padx=10,pady=10, row=1, column=1)
+        button6 = tk.Button(master=logframe, text="Logout", command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=10, row= 1, column=2)
+
         logframe.pack(padx=10,pady=10)
+
+        roomframe = tk.Frame(master=self)
+
+        label1 = tk.Label(master=roomframe, text="Enter Appointment ID").grid(padx=10, pady=10, row=0, column=0)
+        aidtt = tk.Entry(master=roomframe)
+        aidtt.grid(padx=10,pady=10, row=0, column=1)
+
+        roomlab = tk.Label(master=roomframe, text="Appoint room").grid(padx=10,pady=10,row=0,column=2)
+        roomlist = tk.Listbox(master=roomframe, height=4, exportselection=False)
+        resultroom = self.db.execute_query(f"select r_no, r_type from room where status='free'")
+        resultroom = list(resultroom)
+        roomlist.insert(tk.END,'Room No.    Type')
+        for i in resultroom:
+            text = str(i[0]) + "                    " +i[1]
+            roomlist.insert(tk.END, text)
+        roomlist.select_set(0)
+        roomlist.grid(padx=10,pady=10,row=0,column=3)
+        
+        nurlab = tk.Label(master=roomframe, text="Appoint Nurse").grid(padx=10,pady=10, row=1, column=0)
+        nurlist = tk.Listbox(master=roomframe, height=8, exportselection=False)
+        result = self.db.execute_query("Select s_id from nurse")
+        result = list(result)
+        result[0]= 'None'
+        for i in result:
+            nurlist.insert(tk.END, i)
+        nurlist.select_set(0)
+        nurlist.grid(padx=10,pady=10, row=1, column=1)
+
+        nurlist1 = tk.Listbox(master=roomframe, height=8, exportselection=False)
+        for i in result:
+            nurlist1.insert(tk.END, i)
+        nurlist1.select_set(0)
+        nurlist1.grid(padx=10,pady=10, row=1, column=3)
+
+        button7 = tk.Button(master=roomframe, text="Assign Room", command=comAssign).grid(padx=10,pady=10,row=2,column=2)
+
 
 class forgotPID(tk.Frame):
     def __init__(self, parent, controller):
