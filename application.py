@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk
+from tkcalendar import Calendar
 from tkinter.simpledialog import askstring
 import tkinter.messagebox as MessageBox
 import mysql.connector
@@ -23,7 +24,7 @@ class Table:
                 self.e.insert(tk.END, Table.lst[i][j])
 
 class MySQLDatabase:
-    def __init__(self, host, username, password, database):
+    def __init__(self, host, username, password="00000000", database='Hospital'):
         self.connection = mysql.connector.connect(
             host=host,
             user=username,
@@ -69,7 +70,7 @@ class tkinterApp(tk.Tk):
         container.grid_columnconfigure(0, weight = 1)
         # initializing frames to an empty dictionary
         self.frames = {} 
-        for F in (StaffLogin, PatientLogin, PatientRegistration, AdminPage, PatientPage, DoctorPage, NursePage, NMSPage):
+        for F in (StaffLogin, PatientLogin, PatientRegistration, AdminPage, PatientPage, DoctorPage, NursePage, NMSPage, forgotPID, forgotPassPat, forgotPassStf):
 
             frame = F(container, self)
 
@@ -90,7 +91,7 @@ class StaffLogin(tk.Frame):
     ids = ""
     passw = ""
     def __init__(self, parent, controller):
-        self.db = MySQLDatabase("localhost", "root", "00000000", "Hospital")
+        self.db = MySQLDatabase("localhost", "root")
         self.db.connection.autocommit = True
         tk.Frame.__init__(self, parent)
         def getdat():
@@ -148,21 +149,34 @@ class StaffLogin(tk.Frame):
         # putting the button in its place by
         # using grid
         button2.pack(padx = 10, pady = 10)
+        button3 = ttk.Button(self, text ="Forgot Password", command = lambda : controller.show_frame(forgotPassStf))
+        # putting the button in its place by
+        # using grid
+        button3.pack(padx = 10, pady = 10)
 
 class PatientLogin(tk.Frame):
+    ids=""
+    passw=""
     def __init__(self, parent, controller):
+        self.db = MySQLDatabase("localhost", "root")
+        self.db.connection.autocommit = True
         tk.Frame.__init__(self, parent)
         def getdat():
-            ids = idtt.get()
+            PatientLogin.ids = idtt.get()
             idtt.delete(0, tk.END)
-            passw = patt.get()
+            PatientLogin.passw = patt.get()
             patt.delete(0, tk.END)
-            if ids == "" or passw == "":
+            if PatientLogin.ids == "" or PatientLogin.passw == "":
                 MessageBox.showwarning("Login Status", "All Field are Required!!!")
             else:
-                controller.show_frame(PatientPage)
-                pass
-
+                if len(PatientLogin.ids) <=8:
+                    passchk = self.db.execute_query(f"Select `password` from patient where p_id='{PatientLogin.ids}'")[0][0]
+                    if passchk != PatientLogin.passw:
+                        MessageBox.showerror("Login Error", "Wrong Password or Non-Existent user")
+                        controller.show_frame(PatientLogin)
+                        return
+                    else:
+                        controller.show_frame(PatientPage)
 
         titletext = tk.Label(master=self, text="Patient Login", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
@@ -195,16 +209,26 @@ class PatientLogin(tk.Frame):
         # putting the button in its place by
         # using grid
         button2.pack(padx = 10, pady = 10)
+        button3 = ttk.Button(self, text ="Forgot Patient ID", command = lambda : controller.show_frame(forgotPID))
+        # putting the button in its place by
+        # using grid
+        button3.pack(padx = 10, pady = 10)
+        button4 = ttk.Button(self, text ="Forgot Password", command = lambda : controller.show_frame(forgotPassPat))
+        # putting the button in its place by
+        # using grid
+        button4.pack(padx = 10, pady = 10)
 
 class PatientRegistration(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.db = MySQLDatabase("localhost", "root")
+        self.db.connection.autocommit = True
 
         def getdat():
             name = nmtt.get()
             gndr = gntt.get(gntt.curselection())
             phnum = phtt.get()
-            adr = adtt.get()
+            adr = adtt.get("1.0", tk.END)
             pwd1 = passwordtt.get()
             pwd2 = passrett.get()
             if name == "" or phnum == "" or adr=="" or pwd1=="" or pwd2=="":
@@ -213,29 +237,43 @@ class PatientRegistration(tk.Frame):
                 if not phnum.isdigit() or len(phnum)!=10:
                     MessageBox.showerror("Registration Status", "Enter Valid Phone No.")
                     phtt.delete(0,tk.END)
+                    return
                 elif pwd2!=pwd1:
                     MessageBox.showerror("Registration Status", "Passwords don't match")
                     passwordtt.delete(0, tk.END)
                     passrett.delete(0, tk.END)
+                    return
                 elif gndr == "None":
                     MessageBox.showerror("Registration Status", "Please Select Your Gender")
+                    return
                 elif gndr == "Others":
                     gndr = askstring("Gender", "What is your gender?")
                     MessageBox.showinfo("Patient Gender", "Gender {} registered succesfully".format(gndr))
-                pass
-        
+                result = self.db.execute_query(f"insert into PATIENT (p_name,gender,address,`Ph.No.`,`password`) VALUES('{name}','{gndr}','{adr}','{phnum}','{pwd1}')")
+                nmtt.delete(0, tk.END)
+                gntt.select_set(0)
+                phtt.delete(0, tk.END)
+                passrett.delete(0, tk.END)
+                passwordtt.delete(0, tk.END)
+                adtt.delete("1.0",tk.END)
+                id = self.db.execute_query(f"SELECT p_id from patient order by p_id desc limit 1")[0][0]
+                MessageBox.showinfo("Registration Done", f"Remember: Your Patient ID is {id}")
+                controller.show_frame(PatientLogin)
+
         titletext = tk.Label(master=self, text="Patient Registration", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
-        logframe.columnconfigure(0, weight=1)
-        logframe.columnconfigure(1, weight=1)
 
         nm = tk.Label(master = logframe, text="Full Name").grid(row = 0, column = 0, sticky=tk.W+tk.E)
         nmtt = tk.Entry(master = logframe)
-        nmtt.grid(pady=10, padx=20, row = 0, column = 1, sticky=tk.W+tk.E)
+        nmtt.grid(pady=10, padx=10, row = 0, column = 1, sticky=tk.W+tk.E)
+
+        phno = tk.Label(master = logframe, text="Phone No.").grid(row = 0, column =2, sticky=tk.W+tk.E)
+        phtt = tk.Entry(master = logframe)
+        phtt.grid(pady=10, padx=10, row = 0, column = 3, sticky=tk.W+tk.E)
 
         gnd = tk.Label(master=logframe, text="Gender").grid(row=1,column=0,sticky=tk.W+tk.E)
 
-        gntt = tk.Listbox(master=logframe)
+        gntt = tk.Listbox(master=logframe, height=8, exportselection=False)
         gntt.insert(1, "None")
         gntt.insert(2, "Male")
         gntt.insert(3, "Female")
@@ -244,28 +282,24 @@ class PatientRegistration(tk.Frame):
         gntt.insert(6, "Intersex")
         gntt.insert(7, "Others")
         gntt.select_set(0)
-        gntt.grid(pady=10, padx=20, row=1, column=1, sticky=tk.E+tk.W)
+        gntt.grid(pady=10, padx=10, row=1, column=1, sticky=tk.E+tk.W)
 
-        phno = tk.Label(master = logframe, text="Phone No.").grid(row = 2, column = 0, sticky=tk.W+tk.E)
-        phtt = tk.Entry(master = logframe)
-        phtt.grid(pady=10, padx=20, row = 2, column = 1, sticky=tk.W+tk.E)
+        add = tk.Label(master=logframe, text = "Address").grid(row = 1, column = 2, sticky=tk.W+tk.E)
+        adtt = tk.Text(master = logframe, height=8, width=25)
+        adtt.grid(pady=10, padx=10, row = 1, column = 3, sticky=tk.W+tk.E)
 
-        add = tk.Label(master=logframe, text = "Address").grid(row = 3, column = 0, sticky=tk.W+tk.E)
-        adtt = tk.Entry(master = logframe)
-        adtt.grid(pady=10, padx=20, row = 3, column = 1, sticky=tk.W+tk.E)
-
-        password = tk.Label(master=logframe, text="Password").grid(padx=20, row= 4, column=0, sticky=tk.E+tk.W)
+        password = tk.Label(master=logframe, text="Password").grid(padx=10, row= 4, column=0, sticky=tk.E+tk.W)
         passwordtt = tk.Entry(master=logframe, show="*")
-        passwordtt.grid(pady=10, padx=20, row=4, column=1, sticky=tk.E+tk.W)
+        passwordtt.grid(pady=10, padx=10, row=4, column=1, sticky=tk.E+tk.W)
 
-        passret = tk.Label(master=logframe, text="Re-Enter Password").grid(padx=20, row = 5, column=0, sticky= tk.E+tk.W)
+        passret = tk.Label(master=logframe, text="Re-Enter Password").grid(padx=10, row = 4, column=2, sticky= tk.E+tk.W)
         passrett = tk.Entry(master=logframe,show="*")
-        passrett.grid(pady=10, padx=20, row=5, column=1, sticky=tk.E+tk.W)
+        passrett.grid(pady=10, padx=10, row=4, column=3, sticky=tk.E+tk.W)
 
         logframe.pack(pady = 20, fill='x')
 
-        button = tk.Button(master=self, command=getdat, text="Login")
-        button.pack(padx = 100,pady = 20)
+        button = tk.Button(master=self, command=getdat, text="Register")
+        button.pack(padx = 10,pady = 10)
 
         button1 = ttk.Button(self, text ="Staff Login", command = lambda : controller.show_frame(StaffLogin))
         # putting the button in its place by
@@ -281,8 +315,26 @@ class AdminPage(tk.Frame):
     s_id = ""
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-        self.db = MySQLDatabase("localhost", "root", "00000000", "Hospital")
+        self.db = MySQLDatabase("localhost", "root")
         self.db.connection.autocommit = True
+
+        def getDate():
+            retdat.pack(padx=10, pady=10)
+
+        def retSet():
+            id = idtt.get()
+            date = cal.get_date()
+            if id == "":
+                MessageBox.showerror("Operation Failed", "No ID Entered")
+                return
+            self.db.execute_query(f"update staff set retirement='{date}' where s_id='{id}'")
+            idtt.delete(0, tk.END)
+            cal.selection_clear()
+            retdat.pack_forget()
+            if self.db.cursor.rowcount !=1:
+                MessageBox.showerror("Operation Failed", "No such User Exists")
+                return
+
         def changePass():
             newpass = askstring("Change Password", "Enter New Password Here")
             if newpass =="":
@@ -327,6 +379,14 @@ class AdminPage(tk.Frame):
                 MessageBox.showinfo("Salary Change", f"Salary of {chanid} changed to {chansal}")
                 return
             MessageBox.showerror("Operation Failed", "Unable to update salary")
+
+        def changePhone():
+            newPh = askstring("Change Phone No.", "Enter New Phone No.")
+            if newPh=="" or not newPh.isdigit or len(newPh)!=10:
+                MessageBox.showerror("Operation Failed", "Please Enter a valid No.")
+                return
+            MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
+            self.db.execute_query(f"update staff set `Ph.No.` = '{newPh}' where s_id='{StaffLogin.ids}'")
 
         def getdat():
             name = nmtt.get()
@@ -403,6 +463,8 @@ class AdminPage(tk.Frame):
 
         button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=10, row=0, column=0)
 
+        button10 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=10, row=2, column=0)
+
         button2 = tk.Button(master=logframe, text="Add Staff", command=addStaff).grid(padx=10, pady=10, row=0, column=1)
 
         button3 = tk.Button(master=logframe, text="Observe Staff", command=showStaff).grid(padx=10, pady=10, row=0, column=2)
@@ -411,7 +473,9 @@ class AdminPage(tk.Frame):
 
         button5 = tk.Button(master=logframe, text="Change Salary", command=changeSalary).grid(padx=10, pady=10, row=1, column=1)
 
-        button6 = tk.Button(master=logframe,text="LogOut", command = lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=20, row=1, column=2)
+        button6 = tk.Button(master=logframe,text="Logout", command = lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=20, row=3, column=1)
+
+        button8 = tk.Button(master=logframe, text="Retire Staff", command=getDate).grid(padx=10, pady=10, row=1,column=2)
 
         logframe.pack(padx=20, pady=20)
 
@@ -472,22 +536,51 @@ class AdminPage(tk.Frame):
 
         button7 = tk.Button(master=stafframe, text="Add Staff", command=getdat).grid(pady=10, row=5, column=2, sticky=tk.E+tk.W)
 
-        
+        retdat= tk.Frame(master=self)
+
+        labelret = tk.Label(master=retdat, text="Staff ID").pack(padx=10)
+        idtt = tk.Entry(master=retdat)
+        idtt.pack(padx=10, pady=10)
+        cal = Calendar(master=retdat, selectmode = 'day', date_pattern='yyyy-mm-dd')
+        cal.pack(pady=10, padx=10)
+        button9 = tk.Button(master=retdat, text="Set Retirement", command=retSet).pack(padx=10, pady=10)
 
 class PatientPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
-
+        self.db = MySQLDatabase("localhost", "root")
+        self.db.connection.autocommit = True
         titletext = tk.Label(master=self, text="Welcome Back", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
 
         def showDetails():
-            pass
+            Table.lst = self.db.execute_query(f"select p.p_id,p.p_name,p.gender,p.address,p.`Ph.No.` from patient as p where p.p_id={PatientLogin.ids}")
+            Table.lst.insert(0,('Patient ID','Patient Name','Gender','Address','Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
+        def changePhone():
+            newPh = askstring("Change Phone No.", "Enter New Phone No.")
+            if newPh=="" or not newPh.isdigit or len(newPh)!=10:
+                MessageBox.showerror("Operation Failed", "Please Enter a valid No.")
+                return
+            MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
+            self.db.execute_query(f"update patient set `Ph.No.` = '{newPh}' where s_id='{PatientLogin.ids}'")
 
         def changePass():
-            pass
+            s_id = PatientLogin.ids
+            newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
+            self.db.execute_query(f"update patient set `password` = '{newpass}' where s_id='{s_id}'")
 
         def showHistory():
             pass
@@ -530,13 +623,33 @@ class PatientPage(tk.Frame):
 class DoctorPage(tk.Frame):
     txt = ""
     def __init__(self, parent, controller):
-        self.db = MySQLDatabase("localhost", "root", "00000000", "Hospital")
+        self.db = MySQLDatabase("localhost", username="root")
         self.db.connection.autocommit = True
         tk.Frame.__init__(self, parent)
+
+        def seeDetails():
+            Table.lst = self.db.execute_query(f"select s.s_id,s.s_name,s.salary,s.joining,d.dep_name,s.address,s.`Ph.No.` from doctor join staff as s using(s_id) join departments as d using (dep_id) where  s_id = '{StaffLogin.ids}'")
+            Table.lst.insert(0,('Staff ID','Staff Name','Salary','Date of Joining','Department', 'Address', 'Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
+        def changePhone():
+            newPh = askstring("Change Phone No.", "Enter New Phone No.")
+            if newPh=="" or not newPh.isdigit or len(newPh)!=10:
+                MessageBox.showerror("Operation Failed", "Please Enter a valid No.")
+                return
+            MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
+            self.db.execute_query(f"update staff set `Ph.No.` = '{newPh}' where s_id='{StaffLogin.ids}'")
+
         def changePass():
             s_id = StaffLogin.ids
             newpass = askstring("Change Password", "Enter New Password Here")
             if newpass =="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
@@ -552,14 +665,45 @@ class DoctorPage(tk.Frame):
             showApp.mainloop()
 
         def ongoingProcedure():
-            pass
+            Table.lst = self.db.execute_query(f"select a_id,p_id,patient.p_name,date from appointment join patient using(p_id) where s_id = '{StaffLogin.ids}' and (status <>'procedure' or status<>'diagnosis')")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Date of Appointment'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
 
         def patientsByName():
-            pass
+            checkpat = askstring("Search by Name", "Enter Patient Name to be searched for")
+            if checkpat=="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            Table.lst = self.db.execute_query(f"SELECT p_id, p_name, gender, address, `Ph.No.` from Patient where p_name LIKE '%{checkpat}%'")
+            Table.lst.insert(0,('Patient ID','Patient Name','Gender', 'Address', 'Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
 
         def patientByID():
-            DoctorPage.txt = f"Welcome Doctor {StaffLogin.ids}"
-            print(DoctorPage.txt)
+            checkid = askstring("Search by Name", "Enter Patient ID to be searched for")
+            if checkid=="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            Table.lst = self.db.execute_query(f"SELECT p_id, p_name, gender, address, `Ph.No.` from Patient where p_id = '{checkid}'")
+            Table.lst.insert(0,('Patient ID','Patient Name','Gender', 'Address', 'Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+            pass
+
+        def changeAppoint():
             pass
 
         def patientHistory():
@@ -572,15 +716,16 @@ class DoctorPage(tk.Frame):
         logframe.columnconfigure(1, weight=1)
 
         button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=20, row=0, column=0)
-        button2 = tk.Button(master=logframe, text="Upcoming Appointment", command=upcomingAppoint).grid(padx=10, pady=20, row=0, column=1)
-        button3 = tk.Button(master=logframe, text="Ongoing Procedure", command=ongoingProcedure).grid(padx=10, pady=20, row=0, column=2)
+        button10 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
+        button9 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
 
-        label1 = tk.Label(master=logframe, text="Search Patients: ").grid(padx=10, pady=20, row=1, column=0)
-        button4 = tk.Button(master=logframe, text="By Name", command=patientsByName).grid(padx=10, pady=20, row=1, column=1)
-        button5 = tk.Button(master=logframe, text="By ID", command=patientByID).grid(padx=10, pady=20, row=1, column=2)
+        button2 = tk.Button(master=logframe, text="Upcoming Appointment", command=upcomingAppoint).grid(padx=10, pady=20, row=1, column=0)
+        button4 = tk.Button(master=logframe, text="Search Patients By Name", command=patientsByName).grid(padx=10, pady=20, row=1, column=1)
+        button5 = tk.Button(master=logframe, text="Search Patients By ID", command=patientByID).grid(padx=10, pady=20, row=1, column=2)
 
         button7 = tk.Button(master=logframe, text="Patient History", command=patientHistory).grid(padx=10, pady=20, row=2, column=0)
-        button8 = tk.Button(master=logframe, text="Change Appointment Date").grid(padx=10, pady=20, row=2, column=1)
+        button8 = tk.Button(master=logframe, text="Change Appointment Date", command=changeAppoint).grid(padx=10, pady=20, row=2, column=1)
+        button3 = tk.Button(master=logframe, text="Ongoing Procedure", command=ongoingProcedure).grid(padx=10, pady=20, row=2, column=2)
 
         button6 = tk.Button(master=logframe, text="Logout", command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=20, row=4, column=1)
 
@@ -589,20 +734,213 @@ class DoctorPage(tk.Frame):
 class NursePage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.db = MySQLDatabase("localhost", username="root")
+        self.db.connection.autocommit = True
 
-        titletext = tk.Label(master=self, text="Welcome {name}", font=("Arial bold", 18)).pack(pady=20)
+        def seeDetails():
+            Table.lst = self.db.execute_query(f"select s.s_id,s.s_name,s.salary,n.seniority,s.joining,d.dep_name,s.address,s.`Ph.No.` from nurse as n join staff as s using(s_id) join departments as d using (dep_id) where  s_id = '{StaffLogin.ids}'")
+            Table.lst.insert(0,('Staff ID','Staff Name','Salary','Seniority','Date of Joining','Department', 'Address', 'Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
+        def changePhone():
+            newPh = askstring("Change Phone No.", "Enter New Phone No.")
+            if newPh=="" or not newPh.isdigit or len(newPh)!=10:
+                MessageBox.showerror("Operation Failed", "Please Enter a valid No.")
+                return
+            MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
+            self.db.execute_query(f"update staff set `Ph.No.` = '{newPh}' where s_id='{StaffLogin.ids}'")
+
+        def changePass():
+            s_id = StaffLogin.ids
+            newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
+            self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
+
+        titletext = tk.Label(master=self, text="Welcome Nurse", font=("Arial bold", 18)).pack(pady=20)
         logframe = tk.Frame(master=self)
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
+
+        button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=20, row=0, column=0)
+        button10 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
+        button9 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
+
+        logframe.pack(padx=10,pady=10)
 
 class NMSPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.db = MySQLDatabase("localhost", username="root")
+        self.db.connection.autocommit = True
 
-        titletext = tk.Label(master=self, text="Welcome {name}", font=("Arial bold", 18)).pack(pady=20)
+        def seeDetails():
+            Table.lst = self.db.execute_query(f"select s.s_id,s.s_name,s.salary,s.joining,nm.duty_type,s.address,s.`Ph.No.` from `Non-Medical Staff` as nm join staff as s using(s_id) where  s_id = '{StaffLogin.ids}'")
+            Table.lst.insert(0,('Staff ID','Staff Name','Salary','Date of Joining','Duty', 'Address', 'Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
+        def changePhone():
+            newPh = askstring("Change Phone No.", "Enter New Phone No.")
+            if newPh=="" or not newPh.isdigit or len(newPh)!=10:
+                MessageBox.showerror("Operation Failed", "Please Enter a valid No.")
+                return
+            MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
+            self.db.execute_query(f"update staff set `Ph.No.` = '{newPh}' where s_id='{StaffLogin.ids}'")
+
+        def changePass():
+            s_id = StaffLogin.ids
+            newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
+            self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
+
+        titletext = tk.Label(master=self, text="Welcome ", font=("Arial bold", 18))
+        titletext.pack(pady=20)
+        titletext.config(text = f'Welcome')
         logframe = tk.Frame(master=self)
         logframe.columnconfigure(0, weight=1)
         logframe.columnconfigure(1, weight=1)
+
+        button1 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=20, row=0, column=0)
+        button2 = tk.Button(master=logframe, text="Change Phone No.", command=changePhone).grid(padx=10, pady=20, row=0, column=1)
+        button3 = tk.Button(master=logframe, text="Check Personal Details", command=seeDetails).grid(padx=10, pady=20, row = 0, column=2)
+
+        logframe.pack(padx=10,pady=10)
+
+class forgotPID(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.db = MySQLDatabase("localhost", "root")
+        self.db.connection.autocommit = True
+
+        def getdat():
+            name = nmtt.get()
+            nmtt.delete(0,tk.END)
+            Table.lst = self.db.execute_query(f"select p.p_id,p.p_name,p.gender,p.address,p.`Ph.No.` from patient as p where p.p_name LIKE '%{name}%'")
+            Table.lst.insert(0,('Patient ID','Patient Name','Gender','Address','Ph.No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+            controller.show_frame(PatientLogin)
+
+        titletext = tk.Label(master=self, text="Forgot p_id, Enter name", font=("Arial bold", 18)).pack(pady=20)
+        logframe = tk.Frame(master=self)
+
+        lab1 = tk.Label(master=logframe, text="Enter name").grid(padx=10, pady= 20, row=0, column=0)
+        nmtt = tk.Entry(master=logframe)
+        nmtt.grid(padx=10, pady=20, row=0, column=1)
+        button1 = tk.Button(master=logframe, text="Find!", command=getdat).grid(pady=20, row=2, column=1)
+
+        logframe.pack(padx=10, pady=20)
+        button1 = ttk.Button(self, text ="Patient Login", command = lambda : controller.show_frame(PatientLogin))
+        # putting the button in its place by
+        # using grid
+        button1.pack(padx = 10, pady = 10)
+
+class forgotPassPat(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.db = MySQLDatabase("localhost", "root")
+        self.db.connection.autocommit = True
+
+        def getdat():
+            name = nmtt.get()
+            phnum = phtt.get()
+            s_id = name
+            newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            self.db.execute_query(f"update patient set `password` = '{newpass}' where s_id='{s_id}' and `Ph.No.`={phnum}")
+            nmtt.delete(0,tk.END)
+            phtt.delete(0,tk.END)
+            if self.db.cursor.rowcount == 1:
+                MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
+                controller.show_frame(PatientLogin)
+                return
+            else:
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                controller.show_frame(PatientLogin)
+                return
+
+        titletext = tk.Label(master=self, text="Forgot password, Enter ID", font=("Arial bold", 18)).pack(pady=20)
+        logframe = tk.Frame(master=self)
+
+        lab1 = tk.Label(master=logframe, text="Enter ID").grid(padx=10, pady= 20, row=0, column=0)
+        nmtt = tk.Entry(master=logframe)
+        nmtt.grid(padx=10, pady=20, row=0, column=1)
+
+        lab2 = tk.Label(master=logframe, text="Enter Ph.No.").grid(padx=10, pady= 20, row=1, column=0)
+        phtt = tk.Entry(master=logframe)
+        phtt.grid(padx=10, pady= 20, row=1, column=1)
+
+        button1 = tk.Button(master=logframe, text="Change Password", command=getdat).grid(pady=20, row=2, column=1)
+        logframe.pack(padx=10, pady=20)
+        button1 = ttk.Button(self, text ="Patient Login", command = lambda : controller.show_frame(PatientLogin))
+        # putting the button in its place by
+        # using grid
+        button1.pack(padx = 10, pady = 10)
+
+class forgotPassStf(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.db = MySQLDatabase("localhost", "root")
+        self.db.connection.autocommit = True
+
+        def getdat():
+            name = nmtt.get()
+            phnum = phtt.get()
+            s_id = name
+            newpass = askstring("Change Password", "Enter New Password Here")
+            if newpass =="":
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                return
+            self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}' and `Ph.No.`={phnum}")
+            nmtt.delete(0,tk.END)
+            phtt.delete(0,tk.END)
+            if self.db.cursor.rowcount == 1:
+                MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
+                controller.show_frame(StaffLogin)
+                return
+            else:
+                MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
+                controller.show_frame(StaffLogin)
+                return
+
+        titletext = tk.Label(master=self, text="Forgot password, Enter ID", font=("Arial bold", 18)).pack(pady=20)
+        logframe = tk.Frame(master=self)
+
+        lab1 = tk.Label(master=logframe, text="Enter ID").grid(padx=10, pady= 20, row=0, column=0)
+        nmtt = tk.Entry(master=logframe)
+        nmtt.grid(padx=10, pady=20, row=0, column=1)
+
+        lab2 = tk.Label(master=logframe, text="Enter Ph.No.").grid(padx=10, pady= 20, row=1, column=0)
+        phtt = tk.Entry(master=logframe)
+        phtt.grid(padx=10, pady= 20, row=1, column=1)
+
+        button1 = tk.Button(master=logframe, text="Change Password", command=getdat).grid(pady=20, row=2, column=1)
+        logframe.pack(padx=10, pady=20)
+        button1 = ttk.Button(self, text ="Staff Login", command = lambda : controller.show_frame(StaffLogin))
+        # putting the button in its place by
+        # using grid
+        button1.pack(padx = 10, pady = 10)
 
 def main():
     app = tkinterApp()
