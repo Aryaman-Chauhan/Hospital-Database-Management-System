@@ -12,16 +12,28 @@ class Table:
     def __init__(self,root):
 
         # code for creating table
-        for i in range(Table.total_rows):
-            for j in range(Table.total_columns):
-                if i == 0:
-                    self.e = tk.Entry(root, width=18, fg='black', font=('Arial',10,'bold'))
+        if Table.total_columns > 3:
+            for i in range(Table.total_rows):
+                for j in range(Table.total_columns):
+                    if i == 0:
+                        self.e = tk.Entry(root, width=18, fg='black', font=('Arial',10,'bold'))
+                        self.e.grid(row=i, column=j)
+                        self.e.insert(tk.END, Table.lst[i][j])
+                        continue
+                    self.e = tk.Entry(root, width=18, fg='blue', font=('Arial',10))
                     self.e.grid(row=i, column=j)
                     self.e.insert(tk.END, Table.lst[i][j])
-                    continue
-                self.e = tk.Entry(root, width=18, fg='blue', font=('Arial',10))
-                self.e.grid(row=i, column=j)
-                self.e.insert(tk.END, Table.lst[i][j])
+        else:
+            for i in range(Table.total_rows):
+                for j in range(Table.total_columns):
+                    if i == 0:
+                        self.e = tk.Entry(root,height=1, width=20, fg='black', font=('Arial',10,'bold'))
+                        self.e.grid(row=i, column=j)
+                        self.e.insert(tk.END, Table.lst[i][j])
+                        continue
+                    self.e = tk.Entry(root,height=10, width=20, fg='blue', font=('Arial',10))
+                    self.e.grid(row=i, column=j)
+                    self.e.insert(tk.END, Table.lst[i][j])
 
 class MySQLDatabase:
     def __init__(self, host, username, password="00000000", database='Hospital'):
@@ -573,6 +585,7 @@ class AdminPage(tk.Frame):
         button9 = tk.Button(master=retdat, text="Set Retirement", command=retSet).pack(padx=10, pady=10)
 
 class PatientPage(tk.Frame):
+    aid = ""
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.db = MySQLDatabase("localhost", "root")
@@ -610,42 +623,136 @@ class PatientPage(tk.Frame):
             self.db.execute_query(f"update patient set `password` = '{newpass}' where s_id='{s_id}'")
 
         def showHistory():
-            pass
+            Table.lst = self.db.execute_query(f"Select a.a_id,a.s_id,s.s_name,dep.dep_name,a.date,a.status from appointment as a join doctor as d using(s_id) join departments as dep using(dep_id) join staff as s using(s_id) where p_id ='{PatientLogin.ids}'")
+            Table.lst.insert(0,('Appointment ID','Staff ID','Staff Name', 'Department Name','Appointment Date','Status'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1600x600")
+            showApp.mainloop()
 
         def makeAppointment():
-            pass
+            makappoint.pack(padx=10,pady=10)
+
+        def setAppoint():
+            dept = deplist.get(deplist.curselection())[0]
+            if dept=='N':
+                MessageBox.showerror("Operation Cancelled", "Select a department")
+                return
+            depid = self.db.execute_query(f"select dep_id from departments where dep_name='{dept}'")[0][0]
+            self.db.execute_query(f"insert into appointment(p_id, s_id, date) select {PatientLogin.ids},s_id,date_add(current_date(),interval 3 day) from doctor where dep_id = {depid} and s_id<>'DOC0000' order by rand() limit 1")
+            deplist.select_set(0)
+            makappoint.pack_forget()
+            PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
+            if self.db.cursor.rowcount!=1:
+                MessageBox.showerror("Appointment Error", "Couldn't set appointment")
 
         def delAppoint():
-            pass
+            aida = askstring("Cancel Appointment", "Enter appointment id, find in history")
+            if aida!="" or aida!='None' or aida!=None:
+                PatientPage.aid = aida
+            else:
+                PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
+            msg = MessageBox.askquestion("Cancel Appointment", f"Cancel appointment of ID={PatientPage.aid}?")
+            if msg == 'yes':
+                self.db.execute_query(f"Update appointment  Set status = 'cancelled' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                if self.db.cursor.rowcount!=1:
+                    MessageBox.showerror("Cancellation fail", "Failed to cancel appointment")
+
+        def confirmAppoint():
+            aida = askstring("Confirm Appointment", "Enter appointment id, find in history")
+            if aida!="" or aida!='None' or aida!=None:
+                PatientPage.aid = aida
+            else:
+                PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
+            msg = MessageBox.askquestion("Confirm Appointment", f"Confirm appointment of ID={PatientPage.aid}?")
+            if msg == 'yes':
+                self.db.execute_query(f"Update appointment  Set status = 'diagnosis' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                if self.db.cursor.rowcount!=1:
+                    MessageBox.showerror("Confirmation fail", "Failed to confirm appointment")
 
         def acceptProc():
-            pass
+            aida = askstring("Accept Procedure", "Enter appointment id, find in history")
+            if aida!="" or aida!='None' or aida!=None:
+                PatientPage.aid = aida
+            else:
+                PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
+            msg = MessageBox.askquestion("Confirm Procedure", f"Confirm Procedure of Appointment ID={PatientPage.aid}?")
+            if msg == 'yes':
+                self.db.execute_query(f"Update appointment  Set status = 'procedure' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                if self.db.cursor.rowcount!=1:
+                    MessageBox.showerror("Confirmation", "Failed to Confirm Procedure")
 
         def showDiag():
-            pass
+            aid = askstring('Show Diagnosis',"Enter Appointment ID to access diagnosis")
+            if aid=="":
+                MessageBox.showerror("Entry error", "Please enter valid value of ID")
+            Table.lst = self.db.execute_query(f"select diagnosis, medicine from diagnois join appointment using(a_id) where a_id = {aid} and (status='Diagnosis' or status='Procedure' or status='Completed'")
+            Table.lst.insert(0,("Diagnosis","Medicine"))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
+
+        def showDet():
+            aid = askstring('Show Diagnosis',"Enter Appointment ID to access diagnosis")
+            if aid=="":
+                MessageBox.showerror("Entry error", "Please enter valid value of ID")
+            Table.lst = self.db.execute_query(f"select details from procedure join appointment using(a_id) where a_id = {aid} and (status='Procedure' or status='Completed'")
+            Table.lst.insert(0,"Details of Procedure")
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1000x600")
+            showApp.mainloop()
 
         def showBill():
-            pass
+            Table.lst = self.db.execute_query(f"select b.a_id,b.b_no,b.p_id,b.diagnosis_cost,b.medicine_cost,b.procedure_cost,b.total_cost,a.status from billing as b join appointment as a using(a_id) where a.p_id={PatientLogin.ids}")
+            Table.lst.insert(0,('Appointment ID', 'Bill No.','Patient ID', 'Diagnosis Cost', 'Medicine Cost', 'Procedure Cost','Total Cost','Appointment Status'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("1600x600")
+            showApp.mainloop()
 
-        button1 = tk.Button(master=logframe, text="Check Details", command=showDetails).grid(padx=10, pady=20, row=0, column=0)
+        button1 = tk.Button(master=logframe, text="Check Details", command=showDetails).grid(padx=10, pady=10, row=0, column=0)
+        button2 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=10, row=0, column=1)
+        button10 = tk.Button(master=logframe, text="Change Ph.No.", command=changePhone).grid(padx=10,pady=10, row=0, column=2)
 
-        button2 = tk.Button(master=logframe, text="Change Password", command=changePass).grid(padx=10, pady=20, row=0, column=1)
+        button4 = tk.Button(master=logframe, text="Make Appointment", command=makeAppointment).grid(padx=10, pady=10, row=1, column=0)
+        button5 = tk.Button(master=logframe, text="Delete Appointment", command=delAppoint).grid(padx=10, pady=10, row=1, column=1)
+        button12 = tk.Button(master=logframe, text="Confirm Appointment", command=confirmAppoint).grid(padx=10,pady=10,row=1,column=2)
 
-        button3 = tk.Button(master=logframe, text="Check History", command=showHistory).grid(padx=10, pady=20, row=0, column=2)
+        button7 = tk.Button(master=logframe, text="Show Diagnosis, Medicine", command=showDiag).grid(padx=10, pady=10, row=2, column=0)
+        button6 = tk.Button(master=logframe, text="Accept Procedure", command=acceptProc).grid(padx=10, pady=10, row=2, column=1)
+        button13 = tk.Button(master=logframe, text="Show Procedure Details",command=showDet).grid(padx=10,pady=10,row=2,column=2)
 
-        button4 = tk.Button(master=logframe, text="Make Appointment", command=makeAppointment).grid(padx=10, pady=20, row=1, column=0)
+        button8 = tk.Button(master=logframe, text="Show Bill", command=showBill).grid(padx=10, pady=10, row=3, column=1)
+        button3 = tk.Button(master=logframe, text="Check History", command=showHistory).grid(padx=10, pady=10, row=3, column=2)
 
-        button5 = tk.Button(master=logframe, text="Delete Appointment", command=delAppoint).grid(padx=10, pady=20, row=1, column=1)
+        button9 = tk.Button(master=logframe, text="Logout", command= lambda : controller.show_frame(PatientLogin)).grid(padx=10, pady=10, row=4, column=1)
 
-        button6 = tk.Button(master=logframe, text="Accept Procedure", command=acceptProc).grid(padx=10, pady=20, row=1, column=2)
+        logframe.pack(padx=10, pady=10)
 
-        button7 = tk.Button(master=logframe, text="Show Diagnosis", command=showDiag).grid(padx=10, pady=20, row=2, column=0)
+        makappoint = tk.Frame(self)
 
-        button8 = tk.Button(master=logframe, text="Show Bill", command=showBill).grid(padx=10, pady=20, row=2, column=1)
+        result = self.db.execute_query(f"select dep_name from departments join doctor using(dep_id) where s_id<>'DOC0000' group by dep_id")
+        lab1 = tk.Label(master=makappoint, text="Select Department of Appointment").grid(padx=10,pady=10,row=0,column=0)
 
-        button9 = tk.Button(master=logframe, text="Logout", command= lambda : controller.show_frame(PatientLogin)).grid(padx=10, pady=20, row=2, column=2)
+        deplist = tk.Listbox(master=makappoint, height=8, exportselection=False)
+        deplist.insert(tk.END,'None')
+        result = list(result)
+        for i in result:
+            deplist.insert(tk.END, i)
+        deplist.select_set(0)
+        deplist.grid(padx=10,pady=10,row=0,column=1)
 
-        logframe.pack(padx=10, pady=20)
+        button11 = tk.Button(master=makappoint, text="Make Appointment", command=setAppoint).grid(padx=10,pady=10,row=2, column=1)
 
 class DoctorPage(tk.Frame):
     txt = ""
@@ -1033,7 +1140,6 @@ class NMSPage(tk.Frame):
         nurlist1.grid(padx=10,pady=10, row=1, column=3)
 
         button7 = tk.Button(master=roomframe, text="Assign Room", command=comAssign).grid(padx=10,pady=10,row=2,column=2)
-
 
 class forgotPID(tk.Frame):
     def __init__(self, parent, controller):
