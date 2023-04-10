@@ -23,15 +23,27 @@ class Table:
                     self.e = tk.Entry(root, width=18, fg='blue', font=('Arial',10))
                     self.e.grid(row=i, column=j)
                     self.e.insert(tk.END, Table.lst[i][j])
+        elif Table.total_columns==1:
+            if Table.total_rows==1:
+                return
+            for i in range(Table.total_rows):
+                if i == 0:
+                    self.e = tk.Entry(root, width=100, fg='black', font=('Arial',10,'bold'))
+                    self.e.grid(row=i, column=0)
+                    self.e.insert(tk.END, Table.lst[i])
+                    continue
+                self.e = tk.Entry(root, width=100, fg='blue', font=('Arial',10))
+                self.e.grid(row=i, column=0)
+                self.e.insert(tk.END, Table.lst[i])
         else:
             for i in range(Table.total_rows):
                 for j in range(Table.total_columns):
                     if i == 0:
-                        self.e = tk.Entry(root,height=1, width=20, fg='black', font=('Arial',10,'bold'))
+                        self.e = tk.Entry(root, width=100, fg='black', font=('Arial',10,'bold'))
                         self.e.grid(row=i, column=j)
                         self.e.insert(tk.END, Table.lst[i][j])
                         continue
-                    self.e = tk.Entry(root,height=10, width=20, fg='blue', font=('Arial',10))
+                    self.e = tk.Entry(root, width=100, fg='blue', font=('Arial',10))
                     self.e.grid(row=i, column=j)
                     self.e.insert(tk.END, Table.lst[i][j])
 
@@ -688,7 +700,7 @@ class PatientPage(tk.Frame):
             aid = askstring('Show Diagnosis',"Enter Appointment ID to access diagnosis")
             if aid=="":
                 MessageBox.showerror("Entry error", "Please enter valid value of ID")
-            Table.lst = self.db.execute_query(f"select diagnosis, medicine from diagnois join appointment using(a_id) where a_id = {aid} and (status='Diagnosis' or status='Procedure' or status='Completed'")
+            Table.lst = self.db.execute_query(f"select diagnosis, medicine from diagnosis join appointment using(a_id) where a_id = {aid} and (status='Diagnosis' or status='Procedure' or status='Completed')")
             Table.lst.insert(0,("Diagnosis","Medicine"))
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
@@ -701,7 +713,7 @@ class PatientPage(tk.Frame):
             aid = askstring('Show Diagnosis',"Enter Appointment ID to access diagnosis")
             if aid=="":
                 MessageBox.showerror("Entry error", "Please enter valid value of ID")
-            Table.lst = self.db.execute_query(f"select details from procedure join appointment using(a_id) where a_id = {aid} and (status='Procedure' or status='Completed'")
+            Table.lst = self.db.execute_query(f"select details from `procedure` join appointment using(a_id) where a_id = {aid} and (status='Procedure' or status='Completed')")
             Table.lst.insert(0,"Details of Procedure")
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
