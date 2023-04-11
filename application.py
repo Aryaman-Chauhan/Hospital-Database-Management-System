@@ -271,6 +271,8 @@ class PatientRegistration(tk.Frame):
                     return
                 elif gndr == "Others":
                     gndr = askstring("Gender", "What is your gender?")
+                    if gndr is None:
+                        return
                     MessageBox.showinfo("Patient Gender", "Gender {} registered succesfully".format(gndr))
                 result = self.db.execute_query(f"insert into PATIENT (p_name,gender,address,`Ph.No.`,`password`) VALUES('{name}','{gndr}','{adr}','{phnum}','{pwd1}')")
                 nmtt.delete(0, tk.END)
@@ -361,7 +363,7 @@ class AdminPage(tk.Frame):
 
         def changePass():
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or newpass is None:
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='DOC0000'")
@@ -392,7 +394,7 @@ class AdminPage(tk.Frame):
 
         def changeSalary():
             chanid = askstring("Change Salary", "Enter Staff ID")
-            if len(chanid) >8:
+            if len(chanid) >8 or chanid is None:
                 MessageBox.showerror("Operation Failed", "Invalid ID entered")
                 return
             chansal = askstring("Change Salary", "Enter Value in Decimals")
@@ -428,8 +430,9 @@ class AdminPage(tk.Frame):
 
         def addDep():
             dept = askstring("Department Addition", "Write Department name to be added")
-            if dept=="":
+            if dept=="" or dept is None:
                 MessageBox.showerror("Operation Fail", "No Department name given")
+                return
             self.db.execute_query(f"insert into departments(dep_name) values('{dept}')")
             if self.db.cursor.rowcount != 1:
                 MessageBox.showerror("Operation fail", f"Department {dept} could not be added")
@@ -468,12 +471,18 @@ class AdminPage(tk.Frame):
                     return
                 elif gndr == "Others":
                     gndr = askstring("Gender", "What is your gender?")
+                    if gndr is None:
+                        return
                     MessageBox.showinfo("Staff Gender", "Gender {} registered succesfully".format(gndr))
                 elif stftyp == "Nurse":
                     senior = askstring("Seniority", "Choose between Junior, Experienced and Senior")
+                    if senior is None:
+                        return
                     MessageBox.showinfo("Nurse Seniority",f'Nurse Seniority set to {senior}')
                 elif stftyp == "Non-Medical Staff":
                     dutype = askstring("Duty", "Please enter staff duty")
+                    if dutype is None:
+                        return
                     MessageBox.showinfo("Non-Medical Duty", f'Staff duty set as {dutype}')
                 
                 stafframe.pack_forget()
@@ -627,7 +636,7 @@ class PatientPage(tk.Frame):
         def changePass():
             s_id = PatientLogin.ids
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
@@ -661,7 +670,7 @@ class PatientPage(tk.Frame):
 
         def delAppoint():
             aida = askstring("Cancel Appointment", "Enter appointment id, find in history")
-            if aida!="" or aida!='None' or aida!=None:
+            if aida!="" or not aida is None:
                 PatientPage.aid = aida
             else:
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
@@ -673,7 +682,7 @@ class PatientPage(tk.Frame):
 
         def confirmAppoint():
             aida = askstring("Confirm Appointment", "Enter appointment id, find in history")
-            if aida!="" or aida!='None' or aida!=None:
+            if aida!="" or not aida is None:
                 PatientPage.aid = aida
             else:
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
@@ -687,7 +696,7 @@ class PatientPage(tk.Frame):
 
         def acceptProc():
             aida = askstring("Accept Procedure", "Enter appointment id, find in history")
-            if aida!="" or aida!='None' or aida!=None:
+            if aida!="" or not aida is None:
                 PatientPage.aid = aida
             else:
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
@@ -700,8 +709,9 @@ class PatientPage(tk.Frame):
 
         def showDiag():
             aid = askstring('Show Diagnosis',"Enter Appointment ID to access diagnosis")
-            if aid=="":
+            if aid=="" or aid is None:
                 MessageBox.showerror("Entry error", "Please enter valid value of ID")
+                return
             Table.lst = self.db.execute_query(f"select diagnosis, medicine from diagnosis join appointment using(a_id) where a_id = {aid} and (status='Diagnosis' or status='Procedure' or status='Completed')")
             Table.lst.insert(0,("Diagnosis","Medicine"))
             Table.total_columns = len(Table.lst[0])
@@ -713,8 +723,9 @@ class PatientPage(tk.Frame):
 
         def showDet():
             aid = askstring('Show Diagnosis',"Enter Appointment ID to access diagnosis")
-            if aid=="":
+            if aid=="" or aid is None:
                 MessageBox.showerror("Entry error", "Please enter valid value of ID")
+                return
             Table.lst = self.db.execute_query(f"select details from `procedure` join appointment using(a_id) where a_id = {aid} and (status='Procedure' or status='Completed')")
             Table.lst.insert(0,"Details of Procedure")
             Table.total_columns = len(Table.lst[0])
@@ -796,7 +807,7 @@ class DoctorPage(tk.Frame):
         def changePass():
             s_id = StaffLogin.ids
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
@@ -824,7 +835,7 @@ class DoctorPage(tk.Frame):
 
         def patientsByName():
             checkpat = askstring("Search by Name", "Enter Patient Name to be searched for")
-            if checkpat=="":
+            if checkpat=="" or checkpat is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             Table.lst = self.db.execute_query(f"SELECT p_id, p_name, gender, address, `Ph.No.` from Patient where p_name LIKE '%{checkpat}%'")
@@ -838,7 +849,7 @@ class DoctorPage(tk.Frame):
 
         def patientByID():
             checkid = askstring("Search by Name", "Enter Patient ID to be searched for")
-            if checkid=="":
+            if checkid=="" or checkid is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             Table.lst = self.db.execute_query(f"SELECT p_id, p_name, gender, address, `Ph.No.` from Patient where p_id = '{checkid}'")
@@ -861,7 +872,7 @@ class DoctorPage(tk.Frame):
             if aid=="":
                 MessageBox.showerror("Update Fail", "Enter valid appointment id")
                 return
-            self.db.execute_query(f"update diagnosis join appointment using(a_id) set diagnosis = concat(diagnosis,CHAR(13, 10),current_time, '{diag}'), medicine = concat(medicine,CHAR(13, 10),current_time,'{med}') where a_id = {aid} and status='diagnosis'")
+            self.db.execute_query(f"update diagnosis join appointment using(a_id) set diagnosis = concat(diagnosis,CHAR(13, 10),current_time, '{diag}'), medicine = concat(medicine,CHAR(13, 10),current_time,'{med}') where a_id = {aid} and status='diagnosis' and s_id='{StaffLogin.ids}'")
             aidtt.delete(0,tk.END)
             diatt.delete("1.0", tk.END)
             meditt.delete("1.0", tk.END)
@@ -879,7 +890,7 @@ class DoctorPage(tk.Frame):
                 MessageBox.showerror("Update Fail", "Enter valid appointment id")
                 return
             det = dett.get("1.0", tk.END)
-            self.db.execute_query(f"update `procedure` join appointment using(a_id) set details = concat(details,CHAR(13, 10),current_time, '{det}') where a_id = {aid} and status='procedure'")
+            self.db.execute_query(f"update `procedure` join appointment using(a_id) set details = concat(details,CHAR(13, 10),current_time, '{det}') where a_id = {aid} and status='procedure' and s_id='{StaffLogin.ids}'")
             aidtt1.delete(0,tk.END)
             dett.delete("1.0", tk.END)
             procframe.pack_forget()
@@ -887,8 +898,8 @@ class DoctorPage(tk.Frame):
                 MessageBox.showerror("Update failed", "Enter appropriate appointment ID")
 
         def patientHistory():
-            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,p.p_name,a.date from appointment as a join patient as p using(p_id) where s_id = '{StaffLogin.ids}'")
-            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Appointment Date'))
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,p.p_name,a.date,a.status from appointment as a join patient as p using(p_id) where s_id = '{StaffLogin.ids}'")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Patient Name','Appointment Date','Appointment Status'))
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
             showApp = tk.Tk()
@@ -975,7 +986,7 @@ class NursePage(tk.Frame):
         def changePass():
             s_id = StaffLogin.ids
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
@@ -1003,7 +1014,7 @@ class NursePage(tk.Frame):
 
         def detailsPatient():
             apid = askstring("Appointment ID", "Enter Appointment ID to fetch relevant details")
-            if apid=="":
+            if apid=="" or apid is None:
                 MessageBox.showerror("Operation Failed", "No ID entered")
                 return
             Table.lst = self.db.execute_query(f"select a.a_id,a.p_id, ss.s_name,d.b_no,d.diagnosis,d.medicine,a.date,p.date,p.r_no,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) join staff as ss using(s_id) where a_id = {apid}")
@@ -1060,7 +1071,7 @@ class NMSPage(tk.Frame):
         def changePass():
             s_id = StaffLogin.ids
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or not newpass.isalnum() or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
@@ -1325,7 +1336,7 @@ class forgotPassPat(tk.Frame):
             phnum = phtt.get()
             s_id = name
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             self.db.execute_query(f"update patient set `password` = '{newpass}' where s_id='{s_id}' and `Ph.No.`={phnum}")
@@ -1369,7 +1380,7 @@ class forgotPassStf(tk.Frame):
             phnum = phtt.get()
             s_id = name
             newpass = askstring("Change Password", "Enter New Password Here")
-            if newpass =="":
+            if newpass =="" or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}' and `Ph.No.`={phnum}")
