@@ -12,7 +12,9 @@ class Table:
     def __init__(self,root):
 
         # code for creating table
-        if Table.total_columns > 3:
+        if Table.total_rows==1 or Table.total_columns==1:
+                return
+        elif Table.total_columns > 1:
             for i in range(Table.total_rows):
                 for j in range(Table.total_columns):
                     if i == 0:
@@ -23,8 +25,6 @@ class Table:
                     self.e = tk.Entry(root, width=18, fg='blue', font=('Arial',10))
                     self.e.grid(row=i, column=j)
                     self.e.insert(tk.END, Table.lst[i][j])
-        elif Table.total_rows==1:
-                return
             # for i in range(Table.total_rows):
             #     if i == 0:
             #         self.e = tk.Entry(root, width=100, fg='black', font=('Arial',10,'bold'))
@@ -35,16 +35,16 @@ class Table:
             #     self.e.grid(row=i, column=0)
             #     self.e.insert(tk.END, Table.lst[i])
         else:
+            j=0
             for i in range(Table.total_rows):
-                for j in range(Table.total_columns):
-                    if i == 0:
-                        self.e = tk.Entry(root, width=100, fg='black', font=('Arial',10,'bold'))
-                        self.e.grid(row=i, column=j)
-                        self.e.insert(tk.END, Table.lst[i][j])
-                        continue
-                    self.e = tk.Entry(root, width=100, fg='blue', font=('Arial',10))
-                    self.e.grid(row=i, column=j)
-                    self.e.insert(tk.END, Table.lst[i][j])
+                if j==0:
+                    self.e = tk.Entry(root, width=100,fg='black',font=('Arial',10,'bold'))
+                    self.e.grid(row=i,column=j)
+                    self.e.insert(tk.END, Table.lst[i])
+                    j+=1
+                self.e = tk.Entry(root, width=100, fg='blue', font=('Arial',10))
+                self.e.grid(row=i,column=0)
+                self.e.insert(tk.END, Table.lst[i][0])
 
 class MySQLDatabase:
     def __init__(self, host, username, password="00000000", database='Hospital'):
@@ -631,7 +631,7 @@ class PatientPage(tk.Frame):
                 MessageBox.showerror("Operation Failed", "Please Enter a valid No.")
                 return
             MessageBox.showinfo("New Phone No.", f"Changed Number is {newPh}")
-            self.db.execute_query(f"update patient set `Ph.No.` = '{newPh}' where s_id='{PatientLogin.ids}'")
+            self.db.execute_query(f"update patient set `Ph.No.` = '{newPh}' where p_id='{PatientLogin.ids}'")
 
         def changePass():
             s_id = PatientLogin.ids
@@ -640,7 +640,7 @@ class PatientPage(tk.Frame):
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
             MessageBox.showinfo("New Password", f"Changed Password is {newpass}")
-            self.db.execute_query(f"update patient set `password` = '{newpass}' where s_id='{s_id}'")
+            self.db.execute_query(f"update patient set `password` = '{newpass}' where p_id='{s_id}'")
 
         def showHistory():
             Table.lst = self.db.execute_query(f"Select a.a_id,a.s_id,s.s_name,dep.dep_name,a.date,a.status from appointment as a join doctor as d using(s_id) join departments as dep using(dep_id) join staff as s using(s_id) where p_id ='{PatientLogin.ids}'")
@@ -676,7 +676,7 @@ class PatientPage(tk.Frame):
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
             msg = MessageBox.askquestion("Cancel Appointment", f"Cancel appointment of ID={PatientPage.aid}?")
             if msg == 'yes':
-                self.db.execute_query(f"Update appointment  Set status = 'cancelled' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                self.db.execute_query(f"Update appointment  Set status = 'cancelled' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids} and status='Pending'")
                 if self.db.cursor.rowcount!=1:
                     MessageBox.showerror("Cancellation fail", "Failed to cancel appointment")
 
@@ -688,8 +688,14 @@ class PatientPage(tk.Frame):
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
             msg = MessageBox.askquestion("Confirm Appointment", f"Confirm appointment of ID={PatientPage.aid}?")
             if msg == 'yes':
-                self.db.execute_query(f"Update appointment Set status = 'diagnosis' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                self.db.execute_query(f"Update appointment Set status = 'diagnosis' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids} and status='Pending'")
+                if self.db.cursor.rowcount!=1:
+                    MessageBox.showerror("Confirmation fail", "Failed to confirm appointment")
+                    return
                 self.db.execute_query(f"Insert into billing(p_id,date,a_id) values({PatientLogin.ids},current_date,{PatientPage.aid})")
+                if self.db.cursor.rowcount!=1:
+                    MessageBox.showerror("Confirmation fail", "Failed to confirm appointment")
+                    return
                 self.db.execute_query(f"Insert into diagnosis(a_id,b_no,diagnosis,medicine) select {PatientPage.aid},b.b_no,'','' from billing as b where b.p_id={PatientLogin.ids} and b.a_id={PatientPage.aid}")
                 if self.db.cursor.rowcount!=1:
                     MessageBox.showerror("Confirmation fail", "Failed to confirm appointment")
@@ -703,6 +709,9 @@ class PatientPage(tk.Frame):
             msg = MessageBox.askquestion("Confirm Procedure", f"Confirm Procedure of Appointment ID={PatientPage.aid}?")
             if msg == 'yes':
                 self.db.execute_query(f"Update appointment  Set status = 'procedure' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids} and status='diagnosis'")
+                if self.db.cursor.rowcount!=1:
+                    MessageBox.showerror("Confirmation fail", "Failed to accept procedure")
+                    return
                 self.db.execute_query(f"insert into `procedure`(a_id,date) values({PatientPage.aid},current_date)")
                 if self.db.cursor.rowcount!=1:
                     MessageBox.showerror("Confirmation", "Failed to Confirm Procedure")
@@ -1078,8 +1087,8 @@ class NMSPage(tk.Frame):
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
 
         def unassignPat():
-            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.`date`,d.b_no,d.diagnosis,d.medicine,p.`date`,p.date_discharge,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.`status` = 'procedure' and p.r_no is null")
-            Table.lst.insert(0,('Appointment ID','Patient ID','Appointment Date','Bill No.','Diagnosis', 'Medicine', 'Procedure Date','Procedure Date Discharge','Procedure details'))
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.`date`,d.b_no,d.diagnosis,d.medicine,p.`date`,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.`status` = 'procedure' and p.r_no is null")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Appointment Date','Bill No.','Diagnosis', 'Medicine','Procedure Date Discharge','Procedure details'))
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
             showApp = tk.Tk()
@@ -1088,7 +1097,16 @@ class NMSPage(tk.Frame):
             showApp.mainloop()
 
         def patAssign():
+            billframe.pack_forget()
             roomframe.pack(padx=10,pady=10)
+            resultroom = self.db.execute_query(f"select r_no, r_type from room where status='free'")
+            resultroom = list(resultroom)
+            roomlist.insert(tk.END,'Room No.    Type')
+            for i in resultroom:
+                text = str(i[0]) + "                    " +i[1]
+                roomlist.insert(tk.END, text)
+            roomlist.select_set(0)
+            roomlist.grid(padx=10,pady=10,row=0,column=3)
 
         def setBill():
             roomframe.pack_forget()
@@ -1200,14 +1218,13 @@ class NMSPage(tk.Frame):
 
         def comAssign():
             aid = aidtt.get()
+            nur1 = nurlist.get(nurlist.curselection()[0])[0]
+            nur2 = nurlist1.get(nurlist1.curselection()[0])[0]
             room = roomlist.get(roomlist.curselection())
             room = str(room).split()[0]
-            nur1 = nurlist.get(nurlist.curselection())
-            nur2 = nurlist1.get(nurlist1.curselection())
             lst1=self.db.execute_query(f"select a.a_id from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no is null")
-            lst1 = list(lst1[0])
-            print(lst1)
-            if aid == "" or not (int(aid) in lst1):
+            lst1 = list(lst1)
+            if aid == "" or len(lst1)==0 or not (int(aid) in lst1[0]):
                 MessageBox.showerror("Operation Pause", "Enter Appropriate Appointment ID")
                 return
             elif not room.isdigit():
@@ -1221,7 +1238,7 @@ class NMSPage(tk.Frame):
                 MessageBox.showerror("Operation Cancelled", "Wrong Appointment ID")
                 aidtt.delete(0,tk.END)
                 return
-            self.db.execute_query(f"update room nurse_1=if('{nur1}'='None',null,'{nur1}'),nurse_2=if('{nur2}'='None',null,'{nur2}'), status='Occupied' where r_no={room}")
+            self.db.execute_query(f"update room set nurse_1=if('{nur1}' not like 'NUR%',null,'{nur1}'),nurse_2=if('{nur2}' not like 'NUR%',null,'{nur2}'), status='Occupied' where r_no={room}")
             roomframe.pack_forget()
 
         titletext = tk.Label(master=self, text="Welcome ", font=("Arial bold", 18))
@@ -1251,14 +1268,6 @@ class NMSPage(tk.Frame):
 
         roomlab = tk.Label(master=roomframe, text="Appoint room").grid(padx=10,pady=10,row=0,column=2)
         roomlist = tk.Listbox(master=roomframe, height=4, exportselection=False)
-        resultroom = self.db.execute_query(f"select r_no, r_type from room where status='free'")
-        resultroom = list(resultroom)
-        roomlist.insert(tk.END,'Room No.    Type')
-        for i in resultroom:
-            text = str(i[0]) + "                    " +i[1]
-            roomlist.insert(tk.END, text)
-        roomlist.select_set(0)
-        roomlist.grid(padx=10,pady=10,row=0,column=3)
         
         nurlab = tk.Label(master=roomframe, text="Appoint Nurse").grid(padx=10,pady=10, row=1, column=0)
         nurlist = tk.Listbox(master=roomframe, height=8, exportselection=False)
@@ -1339,7 +1348,7 @@ class forgotPassPat(tk.Frame):
             if newpass =="" or newpass is None:
                 MessageBox.showerror("Operation Cancelled", "Operation wasn't completed")
                 return
-            self.db.execute_query(f"update patient set `password` = '{newpass}' where s_id='{s_id}' and `Ph.No.`={phnum}")
+            self.db.execute_query(f"update patient set `password` = '{newpass}' where p_id='{s_id}' and `Ph.No.`={phnum}")
             nmtt.delete(0,tk.END)
             phtt.delete(0,tk.END)
             if self.db.cursor.rowcount == 1:
