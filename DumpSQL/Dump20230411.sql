@@ -32,7 +32,7 @@ CREATE TABLE `appointment` (
   `Status` varchar(20) DEFAULT 'pending',
   PRIMARY KEY (`a_id`),
   CONSTRAINT `appointment_chk_1` CHECK ((`STATUS` in (_utf8mb4'pending',_utf8mb4'procedure',_utf8mb4'diagnosis',_utf8mb4'completed',_utf8mb4'cancelled')))
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -41,6 +41,7 @@ CREATE TABLE `appointment` (
 
 LOCK TABLES `appointment` WRITE;
 /*!40000 ALTER TABLE `appointment` DISABLE KEYS */;
+INSERT INTO `appointment` VALUES (12,1,'DOC0002','2023-04-14','procedure'),(13,3,'DOC0001','2023-04-14','Completed'),(14,3,'DOC0002','2023-04-14','cancelled');
 /*!40000 ALTER TABLE `appointment` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -61,7 +62,7 @@ CREATE TABLE `billing` (
   `procedure_cost` decimal(8,2) NOT NULL DEFAULT '0.00',
   `total_cost` decimal(8,2) NOT NULL DEFAULT '0.00',
   PRIMARY KEY (`b_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -70,6 +71,7 @@ CREATE TABLE `billing` (
 
 LOCK TABLES `billing` WRITE;
 /*!40000 ALTER TABLE `billing` DISABLE KEYS */;
+INSERT INTO `billing` VALUES (2,1,'2023-04-11',40.00,12,50.00,100.00,190.00),(9,3,'2023-04-11',100.00,13,200.00,200.00,500.00);
 /*!40000 ALTER TABLE `billing` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -84,7 +86,7 @@ CREATE TABLE `departments` (
   `dep_id` int unsigned NOT NULL AUTO_INCREMENT,
   `Dep_name` varchar(20) NOT NULL,
   PRIMARY KEY (`dep_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -93,7 +95,7 @@ CREATE TABLE `departments` (
 
 LOCK TABLES `departments` WRITE;
 /*!40000 ALTER TABLE `departments` DISABLE KEYS */;
-INSERT INTO `departments` VALUES (1,'Surgical'),(2,'Dietary'),(3,'Pediatric'),(4,'Radiology'),(5,'Cardiology'),(6,'Paramedical'),(7,'Neurology'),(8,'Gynaecology'),(9,'Dentistry');
+INSERT INTO `departments` VALUES (1,'Surgical'),(2,'Dietary'),(3,'Pediatric'),(4,'Radiology'),(5,'Cardiology'),(6,'Paramedical'),(7,'Neurology'),(8,'Gynaecology'),(9,'Dentistry'),(11,'Pulmonology');
 /*!40000 ALTER TABLE `departments` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -107,10 +109,10 @@ DROP TABLE IF EXISTS `diagnosis`;
 CREATE TABLE `diagnosis` (
   `a_id` int unsigned NOT NULL AUTO_INCREMENT,
   `b_no` int unsigned NOT NULL,
-  `Diagnosis` varchar(500) NOT NULL,
-  `Medicine` varchar(500) NOT NULL,
+  `Diagnosis` varchar(500) NOT NULL DEFAULT '',
+  `Medicine` varchar(500) NOT NULL DEFAULT '',
   PRIMARY KEY (`a_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -119,6 +121,7 @@ CREATE TABLE `diagnosis` (
 
 LOCK TABLES `diagnosis` WRITE;
 /*!40000 ALTER TABLE `diagnosis` DISABLE KEYS */;
+INSERT INTO `diagnosis` VALUES (12,2,'\n18:25:25Mild Fever\n','\n18:25:25Paracetamol\n'),(13,3,'\r\n20:47:36fever\n\r\n20:48:03low rbc\n','\r\n20:47:36antibiotic\n\r\n20:48:03muskmelon\n'),(14,4,'','');
 /*!40000 ALTER TABLE `diagnosis` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -142,7 +145,7 @@ CREATE TABLE `doctor` (
 
 LOCK TABLES `doctor` WRITE;
 /*!40000 ALTER TABLE `doctor` DISABLE KEYS */;
-INSERT INTO `doctor` VALUES ('DOC0000',1),('DOC0001',8),('DOC0002',7);
+INSERT INTO `doctor` VALUES ('DOC0000',1),('DOC0001',8),('DOC0002',7),('DOC0003',9),('DOC0004',1);
 /*!40000 ALTER TABLE `doctor` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -191,7 +194,7 @@ CREATE TABLE `nurse` (
 
 LOCK TABLES `nurse` WRITE;
 /*!40000 ALTER TABLE `nurse` DISABLE KEYS */;
-INSERT INTO `nurse` VALUES ('DOC0000','admin',1),('NUR0001','Experienced',3),('NUR0002','Experienced',3);
+INSERT INTO `nurse` VALUES ('DOC0000','admin',1),('NUR0001','Experienced',3),('NUR0002','Experienced',3),('NUR0003','None',8);
 /*!40000 ALTER TABLE `nurse` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -210,7 +213,7 @@ CREATE TABLE `patient` (
   `Ph.No.` varchar(10) NOT NULL,
   `password` varchar(20) NOT NULL DEFAULT '0000',
   PRIMARY KEY (`p_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -219,7 +222,7 @@ CREATE TABLE `patient` (
 
 LOCK TABLES `patient` WRITE;
 /*!40000 ALTER TABLE `patient` DISABLE KEYS */;
-INSERT INTO `patient` VALUES (1,'Aryaman Chauhan','Male','Vyas Bhawan,\nBITS Pilani,\nPilani\n','9639226969','arya'),(2,'Devansh','Male','Vyas Bhawan,\nBITS Pilani,\nPilani\n','9077578789','dank');
+INSERT INTO `patient` VALUES (1,'Aryaman Chauhan','Male','Vyas Bhawan,\nBITS Pilani,\nPilani\n','9639226969','arya'),(2,'Devansh','Male','Vyas Bhawan,\nBITS Pilani,\nPilani\n','9077578789','dank'),(3,'Rahul','Male','RAM BHAWAN,BITS PILANI\n','4569874123','hello');
 /*!40000 ALTER TABLE `patient` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -235,9 +238,9 @@ CREATE TABLE `procedure` (
   `date` date NOT NULL,
   `r_no` int unsigned DEFAULT NULL,
   `date_discharge` date DEFAULT NULL,
-  `details` varchar(500) DEFAULT NULL,
+  `details` varchar(500) NOT NULL DEFAULT '',
   PRIMARY KEY (`a_id`,`date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -246,6 +249,7 @@ CREATE TABLE `procedure` (
 
 LOCK TABLES `procedure` WRITE;
 /*!40000 ALTER TABLE `procedure` DISABLE KEYS */;
+INSERT INTO `procedure` VALUES (12,'2023-04-11',1,NULL,'Glucose IV'),(13,'2023-04-11',NULL,'2023-04-11','Glucose IV'),(14,'2023-04-11',NULL,NULL,'Glucose IV');
 /*!40000 ALTER TABLE `procedure` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -266,7 +270,7 @@ CREATE TABLE `room` (
   PRIMARY KEY (`r_no`),
   CONSTRAINT `room_chk_1` CHECK ((`r_type` in (_utf8mb4'VIP',_utf8mb4'General',_utf8mb4'Children',_utf8mb4'Public'))),
   CONSTRAINT `room_stat` CHECK ((`status` in (_utf8mb4'Free',_utf8mb4'Occupied')))
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -275,7 +279,7 @@ CREATE TABLE `room` (
 
 LOCK TABLES `room` WRITE;
 /*!40000 ALTER TABLE `room` DISABLE KEYS */;
-INSERT INTO `room` VALUES (1,'VIP',1000.00,NULL,NULL,'Free');
+INSERT INTO `room` VALUES (1,'VIP',1000.00,NULL,'NUR0001','Occupied'),(2,'Children',500.00,NULL,NULL,'Free');
 /*!40000 ALTER TABLE `room` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -306,9 +310,13 @@ CREATE TABLE `staff` (
 
 LOCK TABLES `staff` WRITE;
 /*!40000 ALTER TABLE `staff` DISABLE KEYS */;
-INSERT INTO `staff` VALUES ('DOC0000','ADMIN',100000.00,NULL,'0000','2023-04-09','1234567890','Pilani hospital,pilani','Male'),('DOC0001','Tanisha Sharma',50000.00,NULL,'tasha','2023-04-10','9029484645','Meera Bhawan, BITS Pilani, Pilani','Female'),('DOC0002','Ranvir Kumar',60000.00,NULL,'raki','2023-04-10','9089589333','FD-III,\nBITS Pilani,\nPilani\n','Male'),('NMS0001','Ramu Kumar',13000.00,NULL,'ramu','2023-04-10','8967695487','Worker Quartes,\nPilani Campus,\nBITS Pilani,\nPilani\n','Male'),('NMS0002','John King',18000.00,NULL,'joking','2023-04-10','8964342487','FD-II\nPilani Campus,\nBITS Pilani,\nPilani\n','Male'),('NUR0001','Armaan Singh',18000.00,NULL,'arms','2023-04-09','9087754645','Station Road, Pilani','Male'),('NUR0002','Gretha Thumling',20000.00,NULL,'gret','2023-04-09','8976403210','Staff Quarters,\nBITS Pilani,\nPilani-333013\n','Female');
+INSERT INTO `staff` VALUES ('DOC0000','ADMIN',100000.00,NULL,'6969','2023-04-09','9117898423','Pilani hospital,pilani','Male'),('DOC0001','Tanisha Sharma',50000.00,NULL,'tasha','2023-04-10','9029484645','Meera Bhawan, BITS Pilani, Pilani','Female'),('DOC0002','Ranvir Kumar',60000.00,NULL,'rrrrr','2023-04-10','1111111111','FD-III,\nBITS Pilani,\nPilani\n','Male'),('DOC0003','VERMA SINGH',75000.00,NULL,'verna','2023-04-11','7898745698','Institute building area, Bits pilani rajasthan\n','Male'),('DOC0004','huhue',500.00,'2023-04-06','123','2023-04-11','4564569874','sdfhjsdfgjhsdvf\n','Non-Binary'),('NMS0001','Ramu Kumar',13000.00,NULL,'ramu','2023-04-10','8967695487','Worker Quartes,\nPilani Campus,\nBITS Pilani,\nPilani\n','Male'),('NMS0002','John King',18000.00,NULL,'dfdf','2023-04-10','7777777777','FD-II\nPilani Campus,\nBITS Pilani,\nPilani\n','Male'),('NUR0001','Armaan Singh',18000.00,NULL,'aaaa','2023-04-09','4545454545','Station Road, Pilani','Male'),('NUR0002','Gretha Thumling',20000.00,NULL,'gret','2023-04-09','8976403210','Staff Quarters,\nBITS Pilani,\nPilani-333013\n','Female');
 /*!40000 ALTER TABLE `staff` ENABLE KEYS */;
 UNLOCK TABLES;
+
+--
+-- Dumping events for database 'hospital'
+--
 
 --
 -- Dumping routines for database 'hospital'
@@ -323,4 +331,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2023-04-11  0:04:45
+-- Dump completed on 2023-04-11 23:44:25
