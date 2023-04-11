@@ -4,8 +4,8 @@ USE Hospital;
 CREATE TABLE `Diagnosis`(
     `a_id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `b_no` INT UNSIGNED NOT NULL,
-    `Diagnosis` VARCHAR(500) NOT NULL,
-    `Medicine` VARCHAR(500) NOT NULL,
+    `Diagnosis` VARCHAR(500) NOT NULL DEFAULT '',
+    `Medicine` VARCHAR(500) NOT NULL DEFAULT '',
     PRIMARY KEY(`a_id`)
 );
 
@@ -74,7 +74,7 @@ CREATE TABLE `Procedure`(
     `date` DATE NOT NULL,
     `r_no` INT UNSIGNED NULL,
     `date_discharge` DATE NULL,
-    `details` VARCHAR(500) NULL,
+    `details` VARCHAR(500) NOT NULL DEFAULT '',
     PRIMARY KEY(`a_id`, `date`)
 );
 

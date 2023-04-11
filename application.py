@@ -23,18 +23,17 @@ class Table:
                     self.e = tk.Entry(root, width=18, fg='blue', font=('Arial',10))
                     self.e.grid(row=i, column=j)
                     self.e.insert(tk.END, Table.lst[i][j])
-        elif Table.total_columns==1:
-            if Table.total_rows==1:
+        elif Table.total_rows==1:
                 return
-            for i in range(Table.total_rows):
-                if i == 0:
-                    self.e = tk.Entry(root, width=100, fg='black', font=('Arial',10,'bold'))
-                    self.e.grid(row=i, column=0)
-                    self.e.insert(tk.END, Table.lst[i])
-                    continue
-                self.e = tk.Entry(root, width=100, fg='blue', font=('Arial',10))
-                self.e.grid(row=i, column=0)
-                self.e.insert(tk.END, Table.lst[i])
+            # for i in range(Table.total_rows):
+            #     if i == 0:
+            #         self.e = tk.Entry(root, width=100, fg='black', font=('Arial',10,'bold'))
+            #         self.e.grid(row=i, column=0)
+            #         self.e.insert(tk.END, Table.lst[i])
+            #         continue
+            #     self.e = tk.Entry(root, width=100, fg='blue', font=('Arial',10))
+            #     self.e.grid(row=i, column=0)
+            #     self.e.insert(tk.END, Table.lst[i])
         else:
             for i in range(Table.total_rows):
                 for j in range(Table.total_columns):
@@ -680,7 +679,9 @@ class PatientPage(tk.Frame):
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
             msg = MessageBox.askquestion("Confirm Appointment", f"Confirm appointment of ID={PatientPage.aid}?")
             if msg == 'yes':
-                self.db.execute_query(f"Update appointment  Set status = 'diagnosis' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                self.db.execute_query(f"Update appointment Set status = 'diagnosis' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                self.db.execute_query(f"Insert into billing(p_id,date,a_id) values({PatientLogin.ids},current_date,{PatientPage.aid})")
+                self.db.execute_query(f"Insert into diagnosis(a_id,b_no,diagnosis,medicine) select {PatientPage.aid},b.b_no,'','' from billing as b where b.p_id={PatientLogin.ids} and b.a_id={PatientPage.aid}")
                 if self.db.cursor.rowcount!=1:
                     MessageBox.showerror("Confirmation fail", "Failed to confirm appointment")
 
@@ -692,7 +693,8 @@ class PatientPage(tk.Frame):
                 PatientPage.aid = self.db.execute_query(f"select a_id from appointment where p_id={PatientLogin.ids} order by a_id desc limit 1")[0][0]
             msg = MessageBox.askquestion("Confirm Procedure", f"Confirm Procedure of Appointment ID={PatientPage.aid}?")
             if msg == 'yes':
-                self.db.execute_query(f"Update appointment  Set status = 'procedure' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids}")
+                self.db.execute_query(f"Update appointment  Set status = 'procedure' where a_id ={PatientPage.aid} and p_id={PatientLogin.ids} and status='diagnosis'")
+                self.db.execute_query(f"insert into `procedure`(a_id,date) values({PatientPage.aid},current_date)")
                 if self.db.cursor.rowcount!=1:
                     MessageBox.showerror("Confirmation", "Failed to Confirm Procedure")
 
@@ -855,11 +857,11 @@ class DoctorPage(tk.Frame):
         def changeDiagnosis():
             aid = aidtt.get()
             diag = diatt.get("1.0",tk.END)
-            med = meditt.get("1,0",tk.END)
+            med = meditt.get("1.0",tk.END)
             if aid=="":
                 MessageBox.showerror("Update Fail", "Enter valid appointment id")
                 return
-            self.db.execute_query(f"update diagnosis join appointment using(a_id) set diagnosis = concat(diagnosis'\n',current_time, '{diag}'), medicine = concat(medicine'\n',current_time,'{med}') where a_id = {aid} and status='diagnosis'")
+            self.db.execute_query(f"update diagnosis join appointment using(a_id) set diagnosis = concat(diagnosis,CHAR(13, 10),current_time, '{diag}'), medicine = concat(medicine,CHAR(13, 10),current_time,'{med}') where a_id = {aid} and status='diagnosis'")
             aidtt.delete(0,tk.END)
             diatt.delete("1.0", tk.END)
             meditt.delete("1.0", tk.END)
@@ -877,7 +879,7 @@ class DoctorPage(tk.Frame):
                 MessageBox.showerror("Update Fail", "Enter valid appointment id")
                 return
             det = dett.get("1.0", tk.END)
-            self.db.execute_query(f"update procedure join appointment using(a_id) set details = concat(details,'\n',current_time, '{det}') where a_id = {aid} and status='procedure'")
+            self.db.execute_query(f"update `procedure` join appointment using(a_id) set details = concat(details,CHAR(13, 10),current_time, '{det}') where a_id = {aid} and status='procedure'")
             aidtt1.delete(0,tk.END)
             dett.delete("1.0", tk.END)
             procframe.pack_forget()
@@ -1031,6 +1033,7 @@ class NursePage(tk.Frame):
         logframe.pack(padx=10,pady=10)
 
 class NMSPage(tk.Frame):
+    aid=""
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         self.db = MySQLDatabase("localhost", username="root")
@@ -1064,8 +1067,8 @@ class NMSPage(tk.Frame):
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
 
         def unassignPat():
-            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.date,d.b_no,d.diagnosis,d.medicine,p.date,p.r_no,p.date_discharge,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no=null")
-            Table.lst.insert(0,('Appointment ID','Patient ID','Appointment Date','Bill No.','Diagnosis', 'Medicine', 'Procedure Date','Room No.','Procedure Date Discharge','Procedure details'))
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.date,d.b_no,d.diagnosis,d.medicine,p.date,p.date_discharge,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no=null")
+            Table.lst.insert(0,('Appointment ID','Patient ID','Appointment Date','Bill No.','Diagnosis', 'Medicine', 'Procedure Date','Procedure Date Discharge','Procedure details'))
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
             showApp = tk.Tk()
@@ -1075,6 +1078,114 @@ class NMSPage(tk.Frame):
 
         def patAssign():
             roomframe.pack(padx=10,pady=10)
+
+        def setBill():
+            roomframe.pack_forget()
+            lab1.config(text="Enter Appointment ID")
+            lab1.grid(padx=10,pady=10,row=0,column=0)
+            aptt.grid(padx=10,pady=10,row=0,column=1)
+            button9.config(text="Fetch Data",command=datfetch)
+            button9.grid(padx=10,pady=10,row=0,column=2)
+            billframe.pack(padx=10,pady=10)
+
+        def datfetch():
+            NMSPage.aid = aptt.get()
+            Table.lst = self.db.execute_query(f"Select a.a_id, a.p_id,a.date, a.status, b.b_no From appointment as a Join billing as b using(a_id) Where a.a_id={NMSPage.aid} and (a.status ='diagnosis' or a.status ='procedure')")
+            Table.lst.insert(0,('Appointment ID', 'Patient ID','Appointment Date','Appointment Status', 'Bill No.'))
+            Table.total_columns = len(Table.lst[0])
+            Table.total_rows = len(Table.lst)
+            showApp = tk.Tk()
+            t = Table(showApp)
+            showApp.geometry("800x600")
+            
+            if NMSPage.aid == "" or not NMSPage.aid.isdigit():
+                MessageBox.showerror("Operation Failed", "Please enter a valid Appointment ID")
+                billframe.pack_forget()
+                return
+            result = self.db.execute_query(f"select b.diagnosis_cost, b.procedure_cost, b.medicine_cost,p.date,r.room_fee_per_day from billing as b join appointment as a using(a_id) left join `procedure` as p using(a_id) left join room as r using(r_no) where (a.status='procedure' or a.status='diagnosis') and a_id={NMSPage.aid}")
+            result = list(result)
+            if len(result) == 0:
+                MessageBox.showerror("Access Denied", "Can't change Bill for this ID")
+                return
+            # print(result)
+            result = result[0]
+            lab1.config(text=f"Add to Diagnosis Cost(Earlier={result[0]})")
+            lab1.grid(padx=10,pady=10,row=0,column=0)
+            aptt.delete(0,tk.END)
+            aptt.grid(padx=10,pady=10,row=0,column=1)
+            lab2.config(text=f"Add to Medicine Cost(Earlier={result[2]})")
+            lab2.grid(padx=10,pady=10,row=1,column=0)
+            medtt.grid(padx=10,pady=10,row=1,column=1)
+            lab3.config(text=f"Add to Procedure Cost(Earlier={result[1]})")
+            lab3.grid(padx=10,pady=10,row=2,column=0)
+            lab4.config(text=f"Room fee per day = {result[4]}")
+            lab4.grid(padx=10,pady=10,row=2,column=1)
+            prott.grid(padx=10,pady=10,row=2,column=2)
+            button9.config(text="Update Bill",command=updateBill)
+            button9.grid(padx=10,pady=10,row=3,column=1)
+            button10.config(text="Complete Bill",command=completeBill)
+            button10.grid(padx=10,pady=10,row=3,column=2)
+            showApp.mainloop()
+
+        def updateBill():
+            diagcost = aptt.get()
+            medcost = medtt.get()
+            procost = prott.get()
+            if False==diagcost.isdigit() or False==medcost.isdigit() or False==procost.isdigit():
+                MessageBox.showerror("Operation Cancelled", "Enter valid value")
+                aptt.delete(0,tk.END)
+                medtt.delete(0,tk.END)
+                prott.delete(0,tk.END)
+                return
+            diagcost=float(diagcost)
+            medcost=float(medcost)
+            procost=float(procost)
+            self.db.execute_query(f"Update billing Set diagnosis_cost = diagnosis_cost + {diagcost}, Medicine_cost = medicine_cost + {medcost}, Procedure_cost = procedure_cost + {procost}, Total_cost = procedure_cost + medicine_cost + diagnosis_cost Where a_id={NMSPage.aid}")
+            aptt.delete(0,tk.END)
+            medtt.delete(0,tk.END)
+            prott.delete(0,tk.END)
+            lab2.grid_forget()
+            lab3.grid_forget()
+            lab4.grid_forget()
+            medtt.grid_forget()
+            prott.grid_forget()
+            button10.grid_forget()
+            billframe.pack_forget()
+            if self.db.cursor.rowcount != 1:
+                MessageBox.showerror("Error Occured","Couldn't update billing")
+
+        def completeBill():
+            roomcheck =self.db.execute_query(f"select r_no from `procedure` where a_id={PatientPage.aid}")
+            if len(roomcheck)==0:
+                MessageBox.showerror("Operation Cancelled", "No room assigned to Patient")
+            diagcost = aptt.get()
+            medcost = medtt.get()
+            procost = prott.get()
+            if False==diagcost.isdigit() or False==medcost.isdigit() or False==procost.isdigit():
+                MessageBox.showerror("Operation Cancelled", "Enter valid value")
+                aptt.delete(0,tk.END)
+                medtt.delete(0,tk.END)
+                prott.delete(0,tk.END)
+                return
+            diagcost=float(diagcost)
+            medcost=float(medcost)
+            procost=float(procost)
+            self.db.execute_query(f"update billing as b join `procedure` as p using(a_id) join room as r using(r_no) set b.procedure_cost = b.procedure_cost + (current_date-p.date)*r.room_fee_per_day where b.a_id={NMSPage.aid}")
+            self.db.execute_query(f"Update billing Set diagnosis_cost = diagnosis_cost + {diagcost}, Medicine_cost = medicine_cost + {medcost}, Procedure_cost = procedure_cost + {procost}, Total_cost = procedure_cost + medicine_cost + diagnosis_cost Where a_id={NMSPage.aid}")
+            self.db.execute_query(f"update room as r join `procedure` as p using(r_no) set r.status='Free',r.nurse_1=null,r.nurse_2=null,p.r_no=null,p.date_discharge=current_date where p.a_id={PatientPage.aid}")
+            self.db.execute_query(f"update appointment set status='Completed' where a_id={PatientPage.aid}")
+            aptt.delete(0,tk.END)
+            medtt.delete(0,tk.END)
+            prott.delete(0,tk.END)
+            lab2.grid_forget()
+            lab3.grid_forget()
+            lab4.grid_forget()
+            medtt.grid_forget()
+            prott.grid_forget()
+            button10.grid_forget()
+            billframe.pack_forget()
+            if self.db.cursor.rowcount != 1:
+                MessageBox.showerror("Error Occured","Couldn't update billing")
 
         def comAssign():
             aid = aidtt.get()
@@ -1099,7 +1210,7 @@ class NMSPage(tk.Frame):
                 aidtt.delete(0,tk.END)
                 return
             self.db.execute_query(f"update room nurse_1=if('{nur1}'='None',null,'{nur1}'),nurse_2=if('{nur2}'='None',null,'{nur2}'), status='Occupied' where r_no={room}")
-            roomframe.grid_forget()
+            roomframe.pack_forget()
 
         titletext = tk.Label(master=self, text="Welcome ", font=("Arial bold", 18))
         titletext.pack(pady=20)
@@ -1114,7 +1225,9 @@ class NMSPage(tk.Frame):
 
         button4 = tk.Button(master=logframe, text="Show Unassigned patients", command=unassignPat).grid(padx=10,pady=10, row=1, column=0)
         button5 = tk.Button(master=logframe, text="Assign Free Room", command=patAssign).grid(padx=10,pady=10, row=1, column=1)
-        button6 = tk.Button(master=logframe, text="Logout", command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=10, row= 1, column=2)
+        button8 = tk.Button(master=logframe, text="Set Billing",command=setBill).grid(padx=10,pady=10,row=1,column=2)
+
+        button6 = tk.Button(master=logframe, text="Logout", command=lambda : controller.show_frame(StaffLogin)).grid(padx=10, pady=10, row= 2, column=1)
 
         logframe.pack(padx=10,pady=10)
 
@@ -1152,6 +1265,20 @@ class NMSPage(tk.Frame):
         nurlist1.grid(padx=10,pady=10, row=1, column=3)
 
         button7 = tk.Button(master=roomframe, text="Assign Room", command=comAssign).grid(padx=10,pady=10,row=2,column=2)
+
+        billframe = tk.Frame(self)
+
+        lab1 = tk.Label(master=billframe, text="Enter Appointment ID")
+        aptt = tk.Entry(master=billframe)
+        button9 = tk.Button(master=billframe,text="Fetch data", command=datfetch)
+
+        lab2 = tk.Label(master=billframe, text="")
+        medtt = tk.Entry(master=billframe)
+
+        lab3 = tk.Label(master=billframe,text="")
+        lab4 = tk.Label(master=billframe,text="")
+        prott = tk.Entry(master=billframe)
+        button10 = tk.Button(master=billframe,text="Complete Bill",command=completeBill)
 
 class forgotPID(tk.Frame):
     def __init__(self, parent, controller):
