@@ -1067,7 +1067,7 @@ class NMSPage(tk.Frame):
             self.db.execute_query(f"update staff set `password` = '{newpass}' where s_id='{s_id}'")
 
         def unassignPat():
-            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.date,d.b_no,d.diagnosis,d.medicine,p.date,p.date_discharge,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no=null")
+            Table.lst = self.db.execute_query(f"select a.a_id,a.p_id,a.`date`,d.b_no,d.diagnosis,d.medicine,p.`date`,p.date_discharge,p.details from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.`status` = 'procedure' and p.r_no is null")
             Table.lst.insert(0,('Appointment ID','Patient ID','Appointment Date','Bill No.','Diagnosis', 'Medicine', 'Procedure Date','Procedure Date Discharge','Procedure details'))
             Table.total_columns = len(Table.lst[0])
             Table.total_rows = len(Table.lst)
@@ -1155,7 +1155,7 @@ class NMSPage(tk.Frame):
                 MessageBox.showerror("Error Occured","Couldn't update billing")
 
         def completeBill():
-            roomcheck =self.db.execute_query(f"select r_no from `procedure` where a_id={PatientPage.aid}")
+            roomcheck =self.db.execute_query(f"select r_no from `procedure` where a_id={NMSPage.aid}")
             if len(roomcheck)==0:
                 MessageBox.showerror("Operation Cancelled", "No room assigned to Patient")
             diagcost = aptt.get()
@@ -1172,8 +1172,8 @@ class NMSPage(tk.Frame):
             procost=float(procost)
             self.db.execute_query(f"update billing as b join `procedure` as p using(a_id) join room as r using(r_no) set b.procedure_cost = b.procedure_cost + (current_date-p.date)*r.room_fee_per_day where b.a_id={NMSPage.aid}")
             self.db.execute_query(f"Update billing Set diagnosis_cost = diagnosis_cost + {diagcost}, Medicine_cost = medicine_cost + {medcost}, Procedure_cost = procedure_cost + {procost}, Total_cost = procedure_cost + medicine_cost + diagnosis_cost Where a_id={NMSPage.aid}")
-            self.db.execute_query(f"update room as r join `procedure` as p using(r_no) set r.status='Free',r.nurse_1=null,r.nurse_2=null,p.r_no=null,p.date_discharge=current_date where p.a_id={PatientPage.aid}")
-            self.db.execute_query(f"update appointment set status='Completed' where a_id={PatientPage.aid}")
+            self.db.execute_query(f"update room as r join `procedure` as p using(r_no) set r.status='Free',r.nurse_1=null,r.nurse_2=null,p.r_no=null,p.date_discharge=current_date where p.a_id={NMSPage.aid}")
+            self.db.execute_query(f"update appointment set status='Completed' where a_id={NMSPage.aid}")
             aptt.delete(0,tk.END)
             medtt.delete(0,tk.END)
             prott.delete(0,tk.END)
@@ -1193,9 +1193,10 @@ class NMSPage(tk.Frame):
             room = str(room).split()[0]
             nur1 = nurlist.get(nurlist.curselection())
             nur2 = nurlist1.get(nurlist1.curselection())
-            lst1=self.db.execute_query(f"select a.a_id from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no=null")
-            lst1 = list(lst1)
-            if aid == "" or aid not in lst1:
+            lst1=self.db.execute_query(f"select a.a_id from appointment as a join `procedure` as p using(a_id) join diagnosis as d using(a_id) where a.status = 'procedure' and p.r_no is null")
+            lst1 = list(lst1[0])
+            print(lst1)
+            if aid == "" or not (int(aid) in lst1):
                 MessageBox.showerror("Operation Pause", "Enter Appropriate Appointment ID")
                 return
             elif not room.isdigit():
