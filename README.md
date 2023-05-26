@@ -8,10 +8,6 @@ The system provides an interface that allows you to manage and view the data eff
 
 ![Library Management System](https://github.com/Aryaman-Chauhan/Hospital-Database-Management-System/blob/main/Images/ERDiagram.png)
 
-## Explanation Video
-[Link 1](https://drive.google.com/drive/folders/11bjJIn17oQQmN0w3uVlmL_JhJMfzBKDr?usp=sharing)
-[Link 2](https://drive.google.com/drive/folders/1eycNVWwkS4ZUFCqw14UQsZasdMs0YqAX?usp=sharing)
-
 ## Tables Featured:
 
 Staff(**s_id**, s_name, salary, retirement, joining, Ph.No., Address, Gender, password)
